@@ -155,11 +155,11 @@ const DDRDashboard = () => {
       } catch (jsonError) {
         // If response isn't valid JSON, show the raw response
         console.error('Response is not valid JSON:', responseText);
-        throw new Error(`Invalid API response: ${responseText.substring(0, 100)}...`);
+        throw new Error('Invalid API response: ' + responseText.substring(0, 100) + '...');
       }
     } catch (error) {
       console.error('Fetch error:', error);
-      setError(`Error fetching data: ${error.message}`);
+      setError('Error fetching data: ' + error.message);
       setIsLoading(false);
     }
   };
@@ -176,7 +176,7 @@ const DDRDashboard = () => {
       const response = await fetch(csvUrl);
       
       if (!response.ok) {
-        throw new Error(`CSV fetch responded with status: ${response.status}`);
+        throw new Error('CSV fetch responded with status: ' + response.status);
       }
       
       const csvText = await response.text();
@@ -205,13 +205,13 @@ const DDRDashboard = () => {
         },
         error: (error) => {
           console.error('CSV parsing error:', error);
-          setError(`Error parsing CSV: ${error.message}`);
+          setError('Error parsing CSV: ' + error.message);
           setIsLoading(false);
         }
       });
     } catch (error) {
       console.error('CSV fetch error:', error);
-      setError(`Error fetching CSV: ${error.message}`);
+      setError('Error fetching CSV: ' + error.message);
       setIsLoading(false);
     }
   };
@@ -580,7 +580,7 @@ const DDRDashboard = () => {
                       result === 'win' ? 'bg-green-500' : 
                       result === 'loss' ? 'bg-red-500' : 'bg-blue-500'
                     } rounded-t-lg shadow-inner transition-all duration-500 ease-in-out`}
-                    style={{ height: `${percentage}%` }}
+                    style={{ width: `${percentage}%` }}
                   ></div>
                   <div className="mt-2 text-center">
                     <p className="font-medium capitalize">{result.replace(/_/g, ' ')}</p>
