@@ -121,7 +121,7 @@ const DDRDashboard = () => {
         
         if (!response.ok) {
           console.error('API Error Details:', data);
-          throw new Error(`API error: ${data.error?.message || 'Unknown error'}`);
+          throw new Error('API error: ' + (data.error && data.error.message ? data.error.message : 'Unknown error'));
         }
         
         if (!data.values || data.values.length === 0) {
