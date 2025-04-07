@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-
 const DDRDashboard = () => {
   // All available models
   const allModels = [
