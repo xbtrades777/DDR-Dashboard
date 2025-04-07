@@ -1,19 +1,19 @@
 const DDRDashboard = () => {
-  // All available models
+  // All available models with correct spacing
   const allModels = [
-    'Min-Min',
-    'Min-MinMed',
-    'Min-MedMax',
-    'Min-Max+',
-    'MinMed-Min',
-    'MinMed-MinMed',
-    'MinMed-MedMax',
-    'MinMed-Max+',
-    'MedMax-Min',
-    'MedMax-MinMed',
-    'MedMax-MedMax',
-    'Max+-Min',
-    'Max+-MedMax',
+    'Min - Min',
+    'Min - MinMed',
+    'Min - MedMax',
+    'Min - Max+',
+    'MinMed - Min',
+    'MinMed - MinMed',
+    'MinMed - MedMax',
+    'MinMed - Max+',
+    'MedMax - Min',
+    'MedMax - MinMed',
+    'MedMax - MedMax',
+    'Max+ - Min',
+    'Max+ - MedMax',
     ''  // Blank option
   ];
 
@@ -72,7 +72,7 @@ const DDRDashboard = () => {
   const [showColorSelection, setShowColorSelection] = useState(false);
   
   useEffect(() => {
-    if (selectedModel.startsWith('Min-')) {
+    if (selectedModel.startsWith('Min -')) {
       setShowPercentage(true);
       setShowColorSelection(false);
       setSelectedColor('');
@@ -226,18 +226,24 @@ const DDRDashboard = () => {
     
     // Create criteria object based on selections and mapped column names
     const criteria = {
-      models: selectedModel,  // "Start" maps to "Models" in the sheet
+      model: selectedModel,  // Updated to match the exact column name
       high_low: selectedHighLow || undefined,
-      outside_min_start: selectedColor || undefined,  // "Color" maps to "Outside Min Start"
-      color_: selectedPercentage || undefined,  // "% Color" maps to "Color %"
+      outside_min_start: selectedColor || undefined,
+      color_: selectedPercentage || undefined,
     };
     
     console.log('Filtering with criteria:', criteria);
     
-    // Filter data based on criteria
+    // Filter data based on criteria with improved matching
     const matchingData = sheetData.filter(item => {
       for (const [key, value] of Object.entries(criteria)) {
-        if (value && item[key] !== value) {
+        if (!value) continue; // Skip undefined values
+        
+        // Get the actual value from the item, with fallback to empty string
+        const itemValue = item[key] || '';
+        
+        // Simple equality check - the sheet data should already match our format
+        if (itemValue !== value) {
           return false;
         }
       }
@@ -580,7 +586,7 @@ const DDRDashboard = () => {
                       result === 'win' ? 'bg-green-500' : 
                       result === 'loss' ? 'bg-red-500' : 'bg-blue-500'
                     } rounded-t-lg shadow-inner transition-all duration-500 ease-in-out`}
-                    style={{ width: `${percentage}%` }}
+                    style={{ height: `${percentage}%` }}
                   ></div>
                   <div className="mt-2 text-center">
                     <p className="font-medium capitalize">{result.replace(/_/g, ' ')}</p>
