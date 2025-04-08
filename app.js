@@ -28,13 +28,13 @@ const DDRDashboard = () => {
     'Max+ Red'
   ];
 
-// Percentage options for Min
-const percentageOptions = [
-  'Green 0 - 50%',
-  'Green 50 - 100%',
-  'Red 0 - 50%',
-  'Red 50 - 100%'
-];
+  // Percentage options for Min
+  const percentageOptions = [
+    'Green 0 - 50%',
+    'Green 50 - 100%',
+    'Red 0 - 50%',
+    'Red 50 - 100%'
+  ];
 
   // State for selections
   const [selectedModel, setSelectedModel] = useState('');
@@ -153,66 +153,66 @@ const percentageOptions = [
     }
   };
 
-// Function to update dataset count based on selected criteria
-const updateDatasetCount = () => {
-  if (!selectedModel || sheetData.length === 0) {
-    setDatasetCount(0);
-    setProbabilityStats(null);
-    return;
-  }
-  
-  console.log('Filtering with first hit:', selectedModel);
-  console.log('Selected percentage:', selectedPercentage);
-  
-  // Log a sample item to check the field names
-  if (sheetData.length > 0) {
-    console.log('Sample item:', sheetData[0]);
-  }
-  
-  // Filter data to find all records where the model starts with the selected value
-  const matchingData = sheetData.filter(item => {
-    // Check if model exists and starts with the selected model
-    if (selectedModel && (!item.model || !item.model.startsWith(selectedModel + ' -'))) {
-      return false;
+  // Function to update dataset count based on selected criteria
+  const updateDatasetCount = () => {
+    if (!selectedModel || sheetData.length === 0) {
+      setDatasetCount(0);
+      setProbabilityStats(null);
+      return;
     }
     
-    // Check outside_min_start match
-    if (selectedColor && item.outside_min_start !== selectedColor) {
-      return false;
+    console.log('Filtering with first hit:', selectedModel);
+    console.log('Selected percentage:', selectedPercentage);
+    
+    // Log a sample item to check the field names
+    if (sheetData.length > 0) {
+      console.log('Sample item:', sheetData[0]);
     }
     
-// Check Color % match
-if (selectedPercentage) {
-  // Get the value in the data
-  const itemColorPercentage = item['color_%'];
-  
-  // Compare with the selected value
-  if (itemColorPercentage !== selectedPercentage) {
-    console.log(`Color % mismatch: "${itemColorPercentage}" vs "${selectedPercentage}"`);
-    return false;
-  }
-}
+    // Filter data to find all records where the model starts with the selected value
+    const matchingData = sheetData.filter(item => {
+      // Check if model exists and starts with the selected model
+      if (selectedModel && (!item.model || !item.model.startsWith(selectedModel + ' -'))) {
+        return false;
+      }
+      
+      // Check outside_min_start match
+      if (selectedColor && item.outside_min_start !== selectedColor) {
+        return false;
+      }
+      
+      // Check Color % match
+      if (selectedPercentage) {
+        // Get the value in the data
+        const itemColorPercentage = item['color_%'];
+        
+        // Compare with the selected value
+        if (itemColorPercentage !== selectedPercentage) {
+          console.log(`Color % mismatch: "${itemColorPercentage}" vs "${selectedPercentage}"`);
+          return false;
+        }
+      }
+      
+      // Check First Hit Time match
+      if (selectedHighLow && item.first_hit_time !== selectedHighLow) {
+        return false;
+      }
+      
+      return true;
+    });
     
-    // Check First Hit Time match
-    if (selectedHighLow && item.first_hit_time !== selectedHighLow) {
-      return false;
+    console.log('Found matching datasets:', matchingData.length);
+    
+    // Update count
+    setDatasetCount(matchingData.length);
+    
+    // Calculate probabilities if we have matching data
+    if (matchingData.length > 0) {
+      calculateProbabilities(matchingData);
+    } else {
+      setProbabilityStats(null);
     }
-    
-    return true;
-  });
-  
-  console.log('Found matching datasets:', matchingData.length);
-  
-  // Update count
-  setDatasetCount(matchingData.length);
-  
-  // Calculate probabilities if we have matching data
-  if (matchingData.length > 0) {
-    calculateProbabilities(matchingData);
-  } else {
-    setProbabilityStats(null);
-  }
-};
+  };
 
   // Calculate probability statistics
   const calculateProbabilities = (filteredData) => {
@@ -228,28 +228,67 @@ if (selectedPercentage) {
         'Max+': 0
       };
       
-// Count occurrences by parsing the Model column
-filteredData.forEach(item => {
-  if (item.model) {
-    // Split the model value by the hyphen to get first and second hit
-    const parts = item.model.split(' - ');
-    
-    if (parts.length === 2) {
-      const secondHit = parts[1];
-      
-      // Count based on the second hit value
-      if (outcomeTypes.includes(secondHit)) {
-        outcomeCounts[secondHit]++;
-      }
-    }
-  }
-});
+      // Count occurrences by parsing the Model column
+      filteredData.forEach(item => {
+        if (item.model) {
+          // Split the model value by the hyphen to get first and second hit
+          const parts = item.model.split(' - ');
+          
+          if (parts.length === 2) {
+            const secondHit = parts[1];
+            
+            // Count based on the second hit value
+            if (outcomeTypes.includes(secondHit)) {
+              outcomeCounts[secondHit]++;
+            }
+          }
+        }
+      });
       
       // Calculate percentages
       const outcomePercentages = {};
       outcomeTypes.forEach(type => {
         outcomePercentages[type] = totalCount > 0 
           ? ((outcomeCounts[type] / totalCount) * 100).toFixed(1) 
+          : 0;
+      });
+
+      // Calculate timing location probabilities for second hit
+      const timingLocations = ['ODR', 'Trans', 'RDR'];
+      const locationCounts = {
+        'ODR': 0,
+        'Trans': 0,
+        'RDR': 0
+      };
+
+      // Count occurrences by analyzing the first_to_second field
+      filteredData.forEach(item => {
+        if (item.first_to_second) {
+          const value = item.first_to_second;
+          
+          // Check which location it contains for the second hit
+          // The format is "X XXX - Y YYY" where YYY is the second hit location
+          const parts = value.split(' - ');
+          if (parts.length === 2) {
+            const secondHitInfo = parts[1]; // e.g., "High RDR" or "Low ODR"
+            
+            // Determine which location it is
+            if (secondHitInfo.includes('ODR')) {
+              locationCounts['ODR']++;
+            } else if (secondHitInfo.includes('Trans')) {
+              locationCounts['Trans']++;
+            } else if (secondHitInfo.includes('RDR')) {
+              locationCounts['RDR']++;
+            }
+          }
+        }
+      });
+
+      // Calculate timing location percentages
+      const locationPercentages = {};
+      timingLocations.forEach(location => {
+        locationPercentages[location] = totalCount > 0 
+          ? ((locationCounts[location] / totalCount) * 100).toFixed(1) 
           : 0;
       });
       
@@ -294,7 +333,7 @@ filteredData.forEach(item => {
       const lossRate = resultPercentages['loss'] || 0;
       const breakEvenRate = resultPercentages['break_even'] || 0;
       
-      // Set the calculated statistics with outcome probabilities
+      // Set the calculated statistics with outcome probabilities and location probabilities
       setProbabilityStats({
         totalCount,
         winRate,
@@ -302,6 +341,8 @@ filteredData.forEach(item => {
         breakEvenRate,
         outcomeCounts,
         outcomePercentages,
+        locationCounts,
+        locationPercentages,
         averages,
         resultCounts,
         resultPercentages
@@ -370,7 +411,7 @@ filteredData.forEach(item => {
             <h2 className="font-semibold mb-2 text-gray-700">First Hit Time</h2>
             <select 
               value={selectedHighLow}
-              onChange={handleHighLowChange}
+              onChange={(e) => setApiKey(e.target.value)}={handleHighLowChange}
               className="w-full p-2 border border-gray-300 rounded-md"
             >
               <option value="">Select time</option>
@@ -511,34 +552,90 @@ filteredData.forEach(item => {
           </div>
         </div>
       )}
-      
-{/* Results Distribution - Keeping only this part */}
-{probabilityStats && probabilityStats.resultPercentages && (
-  <div className="mt-6">
-    <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
-      <h3 className="font-medium text-gray-700 mb-3">Results Distribution</h3>
-      <div className="space-y-3">
-        {Object.entries(probabilityStats.resultPercentages).map(([result, percentage]) => (
-          <div key={result} className="space-y-1">
-            <div className="flex justify-between text-sm">
-              <span className="capitalize text-gray-600">{result.replace(/_/g, ' ')}</span>
-              <span className="font-medium">{percentage}%</span>
+
+      {/* Timing Location Probabilities */}
+      {probabilityStats && probabilityStats.locationPercentages && (
+        <div className="mt-6">
+          <h2 className="font-semibold mb-4 text-gray-800 text-xl">Second Hit Location Probabilities</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* ODR Location Card */}
+            <div className="bg-gradient-to-br from-lime-50 to-lime-100 p-4 rounded-lg shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-lime-800">ODR</h3>
+                  <p className="text-3xl font-bold text-lime-600">{probabilityStats.locationPercentages['ODR']}%</p>
+                </div>
+                <div className="h-12 w-12 bg-lime-200 rounded-full flex items-center justify-center">
+                  <span className="text-lime-700 text-xl">O</span>
+                </div>
+              </div>
+              <p className="text-xs text-lime-700 mt-2">
+                {probabilityStats.locationCounts['ODR']} occurrences out of {probabilityStats.totalCount} trades
+              </p>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div 
-                className={`h-2.5 rounded-full ${
-                  result === 'win' ? 'bg-green-500' : 
-                  result === 'loss' ? 'bg-red-500' : 'bg-blue-500'
-                }`}
-                style={{ width: `${percentage}%` }}
-              ></div>
+            
+            {/* Trans Location Card */}
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-orange-800">Trans</h3>
+                  <p className="text-3xl font-bold text-orange-600">{probabilityStats.locationPercentages['Trans']}%</p>
+                </div>
+                <div className="h-12 w-12 bg-orange-200 rounded-full flex items-center justify-center">
+                  <span className="text-orange-700 text-xl">T</span>
+                </div>
+              </div>
+              <p className="text-xs text-orange-700 mt-2">
+                {probabilityStats.locationCounts['Trans']} occurrences out of {probabilityStats.totalCount} trades
+              </p>
+            </div>
+            
+            {/* RDR Location Card */}
+            <div className="bg-gradient-to-br from-violet-50 to-violet-100 p-4 rounded-lg shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-violet-800">RDR</h3>
+                  <p className="text-3xl font-bold text-violet-600">{probabilityStats.locationPercentages['RDR']}%</p>
+                </div>
+                <div className="h-12 w-12 bg-violet-200 rounded-full flex items-center justify-center">
+                  <span className="text-violet-700 text-xl">R</span>
+                </div>
+              </div>
+              <p className="text-xs text-violet-700 mt-2">
+                {probabilityStats.locationCounts['RDR']} occurrences out of {probabilityStats.totalCount} trades
+              </p>
             </div>
           </div>
-        ))}
-      </div>
-    </div>
-  </div>
-)}
+        </div>
+      )}
+      
+      {/* Results Distribution */}
+      {probabilityStats && probabilityStats.resultPercentages && (
+        <div className="mt-6">
+          <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+            <h3 className="font-medium text-gray-700 mb-3">Results Distribution</h3>
+            <div className="space-y-3">
+              {Object.entries(probabilityStats.resultPercentages).map(([result, percentage]) => (
+                <div key={result} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="capitalize text-gray-600">{result.replace(/_/g, ' ')}</span>
+                    <span className="font-medium">{percentage}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div 
+                      className={`h-2.5 rounded-full ${
+                        result === 'win' ? 'bg-green-500' : 
+                        result === 'loss' ? 'bg-red-500' : 'bg-blue-500'
+                      }`}
+                      style={{ width: `${percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Visual representation area with basic chart */}
       <div className="mt-8 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -605,79 +702,4 @@ filteredData.forEach(item => {
               placeholder="Enter your Google API Key" 
               className="w-full p-2 border border-gray-300 rounded-md"
               value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="spreadsheet-id" className="block text-sm font-medium text-gray-700 mb-1">
-              Spreadsheet ID
-            </label>
-            <input 
-              id="spreadsheet-id"
-              type="text" 
-              placeholder="Enter your Spreadsheet ID" 
-              className="w-full p-2 border border-gray-300 rounded-md"
-              value={spreadsheetId}
-              onChange={(e) => setSpreadsheetId(e.target.value)}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              ID from your link: 1RLktcJRtgG2Hoszy8Z5Ur9OoVZP_ROxfIpAC6zRGE0Q
-            </p>
-          </div>
-        </div>
-        <div className="mb-4">
-          <label htmlFor="sheet-name" className="block text-sm font-medium text-gray-700 mb-1">
-            Sheet Name
-          </label>
-          <input 
-            id="sheet-name"
-            type="text" 
-            placeholder="e.g., DDR Modeling Raw" 
-            className="w-full p-2 border border-gray-300 rounded-md"
-            value={sheetName}
-            onChange={(e) => {
-              setSheetName(e.target.value);
-              setSheetRange(`${e.target.value}!A1:Z1000`);
-            }}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            File name: DDR Modeling, Sheet name: DDR Modeling Raw
-          </p>
-        </div>
-        <div className="mb-4">
-          <label htmlFor="sheet-range" className="block text-sm font-medium text-gray-700 mb-1">
-            Sheet Range (optional)
-          </label>
-          <input 
-            id="sheet-range"
-            type="text" 
-            placeholder="e.g., DDR Modeling Raw!A1:Z1000" 
-            className="w-full p-2 border border-gray-300 rounded-md"
-            value={sheetRange}
-            onChange={(e) => setSheetRange(e.target.value)}
-          />
-        </div>
-        <div className="flex justify-end">
-          <button 
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
-            onClick={() => fetchGoogleSheetsAPI(apiKey, spreadsheetId, sheetRange)}
-            disabled={!apiKey || !spreadsheetId}
-          >
-            Connect
-          </button>
-        </div>
-        <p className="mt-2 text-sm text-gray-500">
-          Important: Make sure your Google Sheet is shared with the appropriate permissions.
-          <br />
-          For API access, set the sheet to "Anyone with the link can view" or more permissive.
-        </p>
-      </div>
-    </div>
-  );
-};
-
-// Need to define these for the browser environment since we're not using imports
-const { useState, useEffect } = React;
-
-// Render the React component to the DOM
-ReactDOM.render(<DDRDashboard />, document.getElementById('root'));
+              onChange
