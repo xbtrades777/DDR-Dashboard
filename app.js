@@ -258,15 +258,15 @@ const DDRDashboard = () => {
         return false;
       }
       
-    // Special handling for High/Low which maps to first_hit_time
-if (selectedHighLow) {
-  // Make sure we're using the correct field name - "first_hit_time" from "First Hit Time"
-  if (item.first_hit_time !== selectedHighLow) {
-    // Log the mismatch for debugging
-    console.log(`First hit time mismatch: "${item.first_hit_time}" vs "${selectedHighLow}"`);
-    return false;
-  }
-}
+      // Special handling for High/Low which maps to first_hit_time
+      if (selectedHighLow) {
+        // Make sure we're using the correct field name - "first_hit_time" from "First Hit Time"
+        if (item.first_hit_time !== selectedHighLow) {
+          // Log the mismatch for debugging
+          console.log(`First hit time mismatch: "${item.first_hit_time}" vs "${selectedHighLow}"`);
+          return false;
+        }
+      }
       
       return true;
     });
@@ -718,8 +718,8 @@ if (selectedHighLow) {
             Connect
           </button>
         </div>
-        <p className="mt-2 text-sm text-gray-600">
-          <strong>Important:</strong> Make sure your Google Sheet is shared with the appropriate permissions.
+        <p className="mt-2 text-sm text-gray-500">
+          Important: Make sure your Google Sheet is shared with the appropriate permissions.
           <br />
           For API access, set the sheet to "Anyone with the link can view" or more permissive.
         </p>
@@ -738,15 +738,15 @@ if (selectedHighLow) {
               placeholder="Enter Spreadsheet ID" 
               className="flex-grow p-2 border border-gray-300 rounded-md"
             />
-            <button 
+            <button
+<button 
               className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
               onClick={() => fetchPublishedCSV(spreadsheetId)}
             >
               Import CSV
             </button>
           </div>
-          <p className="text-xs text-gray-500
-                <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-gray-500 mt-2">
             Important: Make sure your Google Sheet is published to the web. Go to File → Share → Publish to web, 
             and select "Entire Document" and "CSV".
           </p>
