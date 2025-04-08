@@ -258,10 +258,15 @@ const DDRDashboard = () => {
         return false;
       }
       
-      // Special handling for High/Low which maps directly to first_hit_time
-      if (selectedHighLow && item.first_hit_time !== selectedHighLow) {
-        return false;
-      }
+    // Special handling for High/Low which maps to first_hit_time
+if (selectedHighLow) {
+  // Make sure we're using the correct field name - "first_hit_time" from "First Hit Time"
+  if (item.first_hit_time !== selectedHighLow) {
+    // Log the mismatch for debugging
+    console.log(`First hit time mismatch: "${item.first_hit_time}" vs "${selectedHighLow}"`);
+    return false;
+  }
+}
       
       return true;
     });
