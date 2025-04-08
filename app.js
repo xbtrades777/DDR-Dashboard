@@ -28,13 +28,13 @@ const DDRDashboard = () => {
     'Max+ Red'
   ];
 
-  // Percentage options for Min
-  const percentageOptions = [
-    'Green 0-50%',
-    'Green 50-100%',
-    'Red 0-50%',
-    'Red 50-100%'
-  ];
+// Percentage options for Min
+const percentageOptions = [
+  'Green 0 - 50%',
+  'Green 50 - 100%',
+  'Red 0 - 50%',
+  'Red 50 - 100%'
+];
 
   // State for selections
   const [selectedModel, setSelectedModel] = useState('');
@@ -181,14 +181,17 @@ const updateDatasetCount = () => {
       return false;
     }
     
-    // Check Color % match - using bracket notation for the '%' character
-    if (selectedPercentage) {
-      // If selected percentage doesn't match, return false
-      if (item['color_%'] !== selectedPercentage) {
-        console.log(`Color % mismatch: "${item['color_%']}" vs "${selectedPercentage}"`);
-        return false;
-      }
-    }
+// Check Color % match
+if (selectedPercentage) {
+  // Get the value in the data
+  const itemColorPercentage = item['color_%'];
+  
+  // Compare with the selected value
+  if (itemColorPercentage !== selectedPercentage) {
+    console.log(`Color % mismatch: "${itemColorPercentage}" vs "${selectedPercentage}"`);
+    return false;
+  }
+}
     
     // Check First Hit Time match
     if (selectedHighLow && item.first_hit_time !== selectedHighLow) {
