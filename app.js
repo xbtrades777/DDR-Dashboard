@@ -216,13 +216,52 @@ const DDRDashboard = () => {
     }
   };
 
-  // Function to update dataset count based on selected criteria
-  const updateDatasetCount = () => {
-    if (!selectedModel || sheetData.length === 0) {
-      setDatasetCount(0);
-      setProbabilityStats(null);
-      return;
+ // Function to update dataset count based on selected criteria
+const updateDatasetCount = () => {
+  if (!selectedModel || sheetData.length === 0) {
+    setDatasetCount(0);
+    setProbabilityStats(null);
+    return;
+  }
+  
+  // Create criteria object based on selections and mapped column names
+  const criteria = {
+    model: selectedModel,  // Updated to match the exact column name
+    high_low: selectedHighLow || undefined,
+    outside_min_start: selectedColor || undefined,
+    color_: selectedPercentage || undefined,
+  };
+  
+  console.log('Filtering with criteria:', criteria);
+  
+  // Filter data based on criteria with improved matching
+  const matchingData = sheetData.filter(item => {
+    for (const [key, value] of Object.entries(criteria)) {
+      if (!value) continue; // Skip undefined values
+      
+      // Get the actual value from the item, with fallback to empty string
+      const itemValue = item[key] || '';
+      
+      // Simple equality check - the sheet data should already match our format
+      if (itemValue !== value) {
+        return false;
+      }
     }
+    return true;
+  });
+  
+  console.log('Found matching datasets:', matchingData.length);
+  
+  // Update count
+  setDatasetCount(matchingData.length);
+  
+  // Calculate probabilities if we have matching data
+  if (matchingData.length > 0) {
+    calculateProbabilities(matchingData);
+  } else {
+    setProbabilityStats(null);
+  }
+};
     
     // Create criteria object based on selections and mapped column names
     const criteria = {
