@@ -52,7 +52,7 @@ const DDRDashboard = () => {
   const [selectedPercentage, setSelectedPercentage] = useState('');
   const [showPercentage, setShowPercentage] = useState(false);
   
-  // Simulated dataset count (in a real app, this would be calculated from actual data)
+  // Dataset count
   const [datasetCount, setDatasetCount] = useState(0);
 
   // State for Google Sheet data
@@ -67,8 +67,7 @@ const DDRDashboard = () => {
   const [sheetName, setSheetName] = useState('DDR Modeling Raw');
   const [sheetRange, setSheetRange] = useState('DDR Modeling Raw!A1:Z1000');
 
-  // Effect to determine if percentage options should be shown 
-  // and to handle color selection visibility
+  // Control when to show color selection
   const [showColorSelection, setShowColorSelection] = useState(false);
   
   useEffect(() => {
@@ -88,15 +87,14 @@ const DDRDashboard = () => {
     }
   }, [selectedModel]);
   
-  // Effect to load Google Sheet data on component mount
+  // Load data on mount if credentials available
   useEffect(() => {
-    // If we have API key and spreadsheet ID, try to fetch data
     if (apiKey && spreadsheetId) {
       fetchGoogleSheetsAPI(apiKey, spreadsheetId, sheetRange);
     }
   }, [apiKey, spreadsheetId, sheetRange]);
   
-  // Effect to update dataset count and probabilities when selections change
+  // Update dataset count when selections change
   useEffect(() => {
     updateDatasetCount();
   }, [selectedModel, selectedHighLow, selectedColor, selectedPercentage, sheetData]);
@@ -290,7 +288,7 @@ const DDRDashboard = () => {
     
     try {
       // Get all unique results from the data
-      const resultField = 'result'; // Assuming result field exists in your data
+      const resultField = 'result';
       
       // Count occurrences of each result type
       const resultCounts = {};
@@ -598,7 +596,6 @@ const DDRDashboard = () => {
         
         {selectedModel && probabilityStats ? (
           <div className="h-64">
-            {/* Simple visualization of result percentages */}
             <div className="h-full flex items-end space-x-8 justify-center">
               {probabilityStats.resultPercentages && Object.entries(probabilityStats.resultPercentages).map(([result, percentage]) => (
                 <div key={result} className="flex flex-col items-center justify-end h-full">
@@ -738,15 +735,16 @@ const DDRDashboard = () => {
               placeholder="Enter Spreadsheet ID" 
               className="flex-grow p-2 border border-gray-300 rounded-md"
             />
-            <button
-<button 
+            <button 
+              className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
+                <button 
               className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
               onClick={() => fetchPublishedCSV(spreadsheetId)}
             >
               Import CSV
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-sm text-gray-600 mt-2">
             Important: Make sure your Google Sheet is published to the web. Go to File → Share → Publish to web, 
             and select "Entire Document" and "CSV".
           </p>
