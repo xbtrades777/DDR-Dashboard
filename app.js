@@ -153,54 +153,54 @@ const DDRDashboard = () => {
     }
   };
 
-  // Function to update dataset count based on selected criteria
-  const updateDatasetCount = () => {
-    if (!selectedModel || sheetData.length === 0) {
-      setDatasetCount(0);
-      setProbabilityStats(null);
-      return;
+ // Function to update dataset count based on selected criteria
+const updateDatasetCount = () => {
+  if (!selectedModel || sheetData.length === 0) {
+    setDatasetCount(0);
+    setProbabilityStats(null);
+    return;
+  }
+  
+  // Create criteria object - now we look for models that START with the selected value
+  console.log('Filtering with first hit:', selectedModel);
+  
+  // Filter data to find all records where the model starts with the selected value
+  const matchingData = sheetData.filter(item => {
+    // Check if model exists and starts with the selected model
+    if (selectedModel && (!item.model || !item.model.startsWith(selectedModel + ' -'))) {
+      return false;
     }
     
-    // Create criteria object - now we look for models that START with the selected value
-    console.log('Filtering with first hit:', selectedModel);
-    
-    // Filter data to find all records where the model starts with the selected value
-    const matchingData = sheetData.filter(item => {
-      // Check if the model starts with the selected model
-      if (selectedModel && !item.model.startsWith(selectedModel + ' -')) {
-        return false;
-      }
-      
-      // Check outside_min_start match
-      if (selectedColor && item.outside_min_start !== selectedColor) {
-        return false;
-      }
-      
-      // Check color_ match
-      if (selectedPercentage && item.color_ !== selectedPercentage) {
-        return false;
-      }
-      
-      // Check First Hit Time match
-      if (selectedHighLow && item.first_hit_time !== selectedHighLow) {
-        return false;
-      }
-      
-      return true;
-    });
-    
-    console.log('Found matching datasets:', matchingData.length);
-    
-    // Update count
-    setDatasetCount(matchingData.length);
-    
-    // Calculate probabilities if we have matching data
-    if (matchingData.length > 0) {
-      calculateProbabilities(matchingData);
-    } else {
-      setProbabilityStats(null);
+    // Check outside_min_start match
+    if (selectedColor && item.outside_min_start !== selectedColor) {
+      return false;
     }
-  };
+    
+    // Check color_ match
+    if (selectedPercentage && item.color_ !== selectedPercentage) {
+      return false;
+    }
+    
+    // Check First Hit Time match
+    if (selectedHighLow && item.first_hit_time !== selectedHighLow) {
+      return false;
+    }
+    
+    return true;
+  });
+  
+  console.log('Found matching datasets:', matchingData.length);
+  
+  // Update count
+  setDatasetCount(matchingData.length);
+  
+  // Calculate probabilities if we have matching data
+  if (matchingData.length > 0) {
+    calculateProbabilities(matchingData);
+  } else {
+    setProbabilityStats(null);
+  }
+};
 
   // Calculate probability statistics
   const calculateProbabilities = (filteredData) => {
@@ -216,22 +216,22 @@ const DDRDashboard = () => {
         'Max+': 0
       };
       
-      // Count occurrences by parsing the Model column
-      filteredData.forEach(item => {
-        if (item.model) {
-          // Split the model value by the hyphen to get first and second hit
-          const parts = item.model.split(' - ');
-          
-          if (parts.length === 2) {
-            const secondHit = parts[1];
-            
-            // Count based on the second hit value
-            if (outcomeTypes.includes(secondHit)) {
-              outcomeCounts[secondHit]++;
-            }
-          }
-        }
-      });
+// Count occurrences by parsing the Model column
+filteredData.forEach(item => {
+  if (item.model) {
+    // Split the model value by the hyphen to get first and second hit
+    const parts = item.model.split(' - ');
+    
+    if (parts.length === 2) {
+      const secondHit = parts[1];
+      
+      // Count based on the second hit value
+      if (outcomeTypes.includes(secondHit)) {
+        outcomeCounts[secondHit]++;
+      }
+    }
+  }
+});
       
       // Calculate percentages
       const outcomePercentages = {};
