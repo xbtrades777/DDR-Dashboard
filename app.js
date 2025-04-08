@@ -153,7 +153,7 @@ const DDRDashboard = () => {
     }
   };
 
- // Function to update dataset count based on selected criteria
+// Function to update dataset count based on selected criteria
 const updateDatasetCount = () => {
   if (!selectedModel || sheetData.length === 0) {
     setDatasetCount(0);
@@ -176,9 +176,19 @@ const updateDatasetCount = () => {
       return false;
     }
     
-    // Check color_ match
-    if (selectedPercentage && item.color_ !== selectedPercentage) {
-      return false;
+    // Check Color % match - using color_% field (or whatever it's transformed to)
+    if (selectedPercentage) {
+      // Debug: Log the fields for this item to see actual field names
+      if (item && Object.keys(item).length > 0) {
+        console.log('Item fields:', Object.keys(item));
+      }
+      
+      // Try different possible field name variations
+      const colorPercentField = item['color_%'] || item['color_%25'] || item['color_percent'];
+      
+      if (colorPercentField !== selectedPercentage) {
+        return false;
+      }
     }
     
     // Check First Hit Time match
