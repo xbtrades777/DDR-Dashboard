@@ -1,19 +1,10 @@
 const DDRDashboard = () => {
-  // All available models with correct spacing
+  // All available first parts of models only
   const allModels = [
-    'Min - Min',
-    'Min - MinMed',
-    'Min - MedMax',
-    'Min - Max+',
-    'MinMed - Min',
-    'MinMed - MinMed',
-    'MinMed - MedMax',
-    'MinMed - Max+',
-    'MedMax - Min',
-    'MedMax - MinMed',
-    'MedMax - MedMax',
-    'Max+ - Min',
-    'Max+ - MedMax',
+    'Min',
+    'MinMed',
+    'MedMax',
+    'Max+',
     ''  // Blank option
   ];
 
@@ -71,7 +62,7 @@ const DDRDashboard = () => {
   const [showColorSelection, setShowColorSelection] = useState(false);
   
   useEffect(() => {
-    if (selectedModel.startsWith('Min -')) {
+    if (selectedModel === 'Min') {
       setShowPercentage(true);
       setShowColorSelection(false);
       setSelectedColor('');
@@ -170,48 +161,29 @@ const DDRDashboard = () => {
       return;
     }
     
-    // Create criteria object based on selections and mapped column names
-    const criteria = {
-      model: selectedModel,
-    };
+    // Create criteria object - now we look for models that START with the selected value
+    console.log('Filtering with first hit:', selectedModel);
     
-    // Add outside_min_start criteria if selected
-    if (selectedColor) {
-      criteria.outside_min_start = selectedColor;
-    }
-    
-    // Add color_ criteria if selected
-    if (selectedPercentage) {
-      criteria.color_ = selectedPercentage;
-    }
-    
-    console.log('Filtering with criteria:', criteria);
-    
-    // Filter data based on criteria with improved matching
+    // Filter data to find all records where the model starts with the selected value
     const matchingData = sheetData.filter(item => {
-      // Check model match
-      if (criteria.model && item.model !== criteria.model) {
+      // Check if the model starts with the selected model
+      if (selectedModel && !item.model.startsWith(selectedModel + ' -')) {
         return false;
       }
       
       // Check outside_min_start match
-      if (criteria.outside_min_start && item.outside_min_start !== criteria.outside_min_start) {
+      if (selectedColor && item.outside_min_start !== selectedColor) {
         return false;
       }
       
       // Check color_ match
-      if (criteria.color_ && item.color_ !== criteria.color_) {
+      if (selectedPercentage && item.color_ !== selectedPercentage) {
         return false;
       }
       
-      // Special handling for High/Low which maps to first_hit_time
-      if (selectedHighLow) {
-        // Make sure we're using the correct field name - "first_hit_time" from "First Hit Time"
-        if (item.first_hit_time !== selectedHighLow) {
-          // Log the mismatch for debugging
-          console.log(`First hit time mismatch: "${item.first_hit_time}" vs "${selectedHighLow}"`);
-          return false;
-        }
+      // Check First Hit Time match
+      if (selectedHighLow && item.first_hit_time !== selectedHighLow) {
+        return false;
       }
       
       return true;
@@ -235,10 +207,42 @@ const DDRDashboard = () => {
     const totalCount = filteredData.length;
     
     try {
-      // Get all unique results from the data
-      const resultField = 'result';
+      // Calculate second hit outcome probabilities
+      const outcomeTypes = ['Min', 'MinMed', 'MedMax', 'Max+'];
+      const outcomeCounts = {
+        'Min': 0,
+        'MinMed': 0,
+        'MedMax': 0,
+        'Max+': 0
+      };
       
-      // Count occurrences of each result type
+      // Count occurrences by parsing the Model column
+      filteredData.forEach(item => {
+        if (item.model) {
+          // Split the model value by the hyphen to get first and second hit
+          const parts = item.model.split(' - ');
+          
+          if (parts.length === 2) {
+            const secondHit = parts[1];
+            
+            // Count based on the second hit value
+            if (outcomeTypes.includes(secondHit)) {
+              outcomeCounts[secondHit]++;
+            }
+          }
+        }
+      });
+      
+      // Calculate percentages
+      const outcomePercentages = {};
+      outcomeTypes.forEach(type => {
+        outcomePercentages[type] = totalCount > 0 
+          ? ((outcomeCounts[type] / totalCount) * 100).toFixed(1) 
+          : 0;
+      });
+      
+      // Original result type calculations (win/loss/breakeven)
+      const resultField = 'result';
       const resultCounts = {};
       let totalResults = 0;
       
@@ -249,7 +253,6 @@ const DDRDashboard = () => {
         }
       });
       
-      // Calculate percentages for each result
       const resultPercentages = {};
       Object.keys(resultCounts).forEach(result => {
         resultPercentages[result] = totalResults > 0 
@@ -274,17 +277,19 @@ const DDRDashboard = () => {
         }
       });
       
-      // Calculate win rate and other key metrics
+      // Original win/loss rates
       const winRate = resultPercentages['win'] || 0;
       const lossRate = resultPercentages['loss'] || 0;
       const breakEvenRate = resultPercentages['break_even'] || 0;
       
-      // Set the calculated statistics
+      // Set the calculated statistics with outcome probabilities
       setProbabilityStats({
         totalCount,
         winRate,
         lossRate,
         breakEvenRate,
+        outcomeCounts,
+        outcomePercentages,
         averages,
         resultCounts,
         resultPercentages
@@ -334,13 +339,13 @@ const DDRDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* START Model Selection */}
         <div className="bg-gray-50 p-4 rounded-md">
-          <h2 className="font-semibold mb-2 text-gray-700">START</h2>
+          <h2 className="font-semibold mb-2 text-gray-700">First Hit Pattern</h2>
           <select 
             value={selectedModel}
             onChange={handleModelChange}
             className="w-full p-2 border border-gray-300 rounded-md"
           >
-            <option value="">Select a model</option>
+            <option value="">Select pattern</option>
             {allModels.map((model) => (
               <option key={model} value={model}>{model}</option>
             ))}
@@ -350,13 +355,13 @@ const DDRDashboard = () => {
         {/* High/Low Selection */}
         {selectedModel && (
           <div className="bg-gray-50 p-4 rounded-md">
-            <h2 className="font-semibold mb-2 text-gray-700">High/Low</h2>
+            <h2 className="font-semibold mb-2 text-gray-700">First Hit Time</h2>
             <select 
               value={selectedHighLow}
               onChange={handleHighLowChange}
               className="w-full p-2 border border-gray-300 rounded-md"
             >
-              <option value="">Select High/Low</option>
+              <option value="">Select time</option>
               {highLowOptions.map((option) => (
                 <option key={option} value={option}>{option}</option>
               ))}
@@ -423,10 +428,82 @@ const DDRDashboard = () => {
         </div>
       </div>
 
+      {/* Second Hit Outcome Probability Cards */}
+      {probabilityStats && probabilityStats.outcomePercentages && (
+        <div className="mt-6">
+          <h2 className="font-semibold mb-4 text-gray-800 text-xl">Second Hit Probabilities</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            {/* Min Outcome Card */}
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-purple-800">Min</h3>
+                  <p className="text-3xl font-bold text-purple-600">{probabilityStats.outcomePercentages['Min']}%</p>
+                </div>
+                <div className="h-12 w-12 bg-purple-200 rounded-full flex items-center justify-center">
+                  <span className="text-purple-700 text-xl">M</span>
+                </div>
+              </div>
+              <p className="text-xs text-purple-700 mt-2">
+                {probabilityStats.outcomeCounts['Min']} occurrences out of {probabilityStats.totalCount} trades
+              </p>
+            </div>
+            
+            {/* MinMed Outcome Card */}
+            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-indigo-800">MinMed</h3>
+                  <p className="text-3xl font-bold text-indigo-600">{probabilityStats.outcomePercentages['MinMed']}%</p>
+                </div>
+                <div className="h-12 w-12 bg-indigo-200 rounded-full flex items-center justify-center">
+                  <span className="text-indigo-700 text-xl">MM</span>
+                </div>
+              </div>
+              <p className="text-xs text-indigo-700 mt-2">
+                {probabilityStats.outcomeCounts['MinMed']} occurrences out of {probabilityStats.totalCount} trades
+              </p>
+            </div>
+            
+            {/* MedMax Outcome Card */}
+            <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 p-4 rounded-lg shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-cyan-800">MedMax</h3>
+                  <p className="text-3xl font-bold text-cyan-600">{probabilityStats.outcomePercentages['MedMax']}%</p>
+                </div>
+                <div className="h-12 w-12 bg-cyan-200 rounded-full flex items-center justify-center">
+                  <span className="text-cyan-700 text-xl">MX</span>
+                </div>
+              </div>
+              <p className="text-xs text-cyan-700 mt-2">
+                {probabilityStats.outcomeCounts['MedMax']} occurrences out of {probabilityStats.totalCount} trades
+              </p>
+            </div>
+            
+            {/* Max+ Outcome Card */}
+            <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-amber-800">Max+</h3>
+                  <p className="text-3xl font-bold text-amber-600">{probabilityStats.outcomePercentages['Max+']}%</p>
+                </div>
+                <div className="h-12 w-12 bg-amber-200 rounded-full flex items-center justify-center">
+                  <span className="text-amber-700 text-xl">M+</span>
+                </div>
+              </div>
+              <p className="text-xs text-amber-700 mt-2">
+                {probabilityStats.outcomeCounts['Max+']} occurrences out of {probabilityStats.totalCount} trades
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Probability Statistics Section */}
       {probabilityStats && (
         <div className="mt-6">
-          <h2 className="font-semibold mb-4 text-gray-800 text-xl">Probability Statistics</h2>
+          <h2 className="font-semibold mb-4 text-gray-800 text-xl">Trade Result Statistics</h2>
           
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -542,20 +619,21 @@ const DDRDashboard = () => {
       <div className="mt-8 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
         <h2 className="font-semibold mb-6 text-gray-800 text-xl">Visual Representation</h2>
         
-        {selectedModel && probabilityStats ? (
+        {selectedModel && probabilityStats && probabilityStats.outcomePercentages ? (
           <div className="h-64">
             <div className="h-full flex items-end space-x-8 justify-center">
-              {probabilityStats.resultPercentages && Object.entries(probabilityStats.resultPercentages).map(([result, percentage]) => (
-                <div key={result} className="flex flex-col items-center justify-end h-full">
+              {Object.entries(probabilityStats.outcomePercentages).map(([outcome, percentage]) => (
+                <div key={outcome} className="flex flex-col items-center justify-end h-full">
                   <div 
                     className={`w-24 ${
-                      result === 'win' ? 'bg-green-500' : 
-                      result === 'loss' ? 'bg-red-500' : 'bg-blue-500'
+                      outcome === 'Min' ? 'bg-purple-500' : 
+                      outcome === 'MinMed' ? 'bg-indigo-500' : 
+                      outcome === 'MedMax' ? 'bg-cyan-500' : 'bg-amber-500'
                     } rounded-t-lg shadow-inner transition-all duration-500 ease-in-out`}
                     style={{ height: `${percentage}%` }}
                   ></div>
                   <div className="mt-2 text-center">
-                    <p className="font-medium capitalize">{result.replace(/_/g, ' ')}</p>
+                    <p className="font-medium">{outcome}</p>
                     <p className="text-xl font-bold">{percentage}%</p>
                   </div>
                 </div>
@@ -564,7 +642,7 @@ const DDRDashboard = () => {
           </div>
         ) : sheetData.length > 0 ? (
           <div className="h-64 flex items-center justify-center">
-            <p className="text-gray-500">Select a model to see its visualization</p>
+            <p className="text-gray-500">Select a first hit pattern and time to see probability visualization</p>
           </div>
         ) : (
           <div className="h-64 flex items-center justify-center">
@@ -577,8 +655,8 @@ const DDRDashboard = () => {
       {selectedModel && (
         <div className="mt-8 p-4 bg-blue-50 rounded-md">
           <h2 className="font-semibold mb-2 text-gray-700">Selected Values:</h2>
-          <p><strong>Model:</strong> {selectedModel || 'None'}</p>
-          <p><strong>High/Low:</strong> {selectedHighLow || 'None'}</p>
+          <p><strong>First Hit Pattern:</strong> {selectedModel || 'None'}</p>
+          <p><strong>First Hit Time:</strong> {selectedHighLow || 'None'}</p>
           {showColorSelection && (
             <p><strong>Color:</strong> {selectedColor || 'None'}</p>
           )}
