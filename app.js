@@ -216,76 +216,53 @@ const DDRDashboard = () => {
     }
   };
 
- // Function to update dataset count based on selected criteria
-const updateDatasetCount = () => {
-  if (!selectedModel || sheetData.length === 0) {
-    setDatasetCount(0);
-    setProbabilityStats(null);
-    return;
-  }
-  
-  // Create criteria object based on selections and mapped column names
-  const criteria = {
-    model: selectedModel,  // Updated to match the exact column name
-    high_low: selectedHighLow || undefined,
-    outside_min_start: selectedColor || undefined,
-    color_: selectedPercentage || undefined,
-  };
-  
-  console.log('Filtering with criteria:', criteria);
-  
-  // Filter data based on criteria with improved matching
-  const matchingData = sheetData.filter(item => {
-    for (const [key, value] of Object.entries(criteria)) {
-      if (!value) continue; // Skip undefined values
-      
-      // Get the actual value from the item, with fallback to empty string
-      const itemValue = item[key] || '';
-      
-      // Simple equality check - the sheet data should already match our format
-      if (itemValue !== value) {
-        return false;
-      }
+  // Function to update dataset count based on selected criteria
+  const updateDatasetCount = () => {
+    if (!selectedModel || sheetData.length === 0) {
+      setDatasetCount(0);
+      setProbabilityStats(null);
+      return;
     }
-    return true;
-  });
-  
-  console.log('Found matching datasets:', matchingData.length);
-  
-  // Update count
-  setDatasetCount(matchingData.length);
-  
-  // Calculate probabilities if we have matching data
-  if (matchingData.length > 0) {
-    calculateProbabilities(matchingData);
-  } else {
-    setProbabilityStats(null);
-  }
-};
     
     // Create criteria object based on selections and mapped column names
     const criteria = {
-      model: selectedModel,  // Updated to match the exact column name
-      high_low: selectedHighLow || undefined,
-      outside_min_start: selectedColor || undefined,
-      color_: selectedPercentage || undefined,
+      model: selectedModel,
     };
+    
+    // Add outside_min_start criteria if selected
+    if (selectedColor) {
+      criteria.outside_min_start = selectedColor;
+    }
+    
+    // Add color_ criteria if selected
+    if (selectedPercentage) {
+      criteria.color_ = selectedPercentage;
+    }
     
     console.log('Filtering with criteria:', criteria);
     
     // Filter data based on criteria with improved matching
     const matchingData = sheetData.filter(item => {
-      for (const [key, value] of Object.entries(criteria)) {
-        if (!value) continue; // Skip undefined values
-        
-        // Get the actual value from the item, with fallback to empty string
-        const itemValue = item[key] || '';
-        
-        // Simple equality check - the sheet data should already match our format
-        if (itemValue !== value) {
-          return false;
-        }
+      // Check model match
+      if (criteria.model && item.model !== criteria.model) {
+        return false;
       }
+      
+      // Check outside_min_start match
+      if (criteria.outside_min_start && item.outside_min_start !== criteria.outside_min_start) {
+        return false;
+      }
+      
+      // Check color_ match
+      if (criteria.color_ && item.color_ !== criteria.color_) {
+        return false;
+      }
+      
+      // Special handling for High/Low which maps directly to first_hit_time
+      if (selectedHighLow && item.first_hit_time !== selectedHighLow) {
+        return false;
+      }
+      
       return true;
     });
     
@@ -763,7 +740,8 @@ const updateDatasetCount = () => {
               Import CSV
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-gray-500
+                <p className="text-xs text-gray-500 mt-2">
             Important: Make sure your Google Sheet is published to the web. Go to File → Share → Publish to web, 
             and select "Entire Document" and "CSV".
           </p>
