@@ -721,38 +721,32 @@ const DDRDashboard = () => {
           For API access, set the sheet to "Anyone with the link can view" or more permissive.
         </p>
         
-        {/* Alternative connection method */}
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <h3 className="font-medium text-gray-700 mb-2">Alternative: Direct CSV Import</h3>
-          <p className="text-sm text-gray-600 mb-2">
-            If API access isn't working, try using the published CSV URL instead.
-          </p>
-          <div className="flex flex-col md:flex-row gap-4">
-            <input 
-              type="text" 
-              value={spreadsheetId}
-              onChange={(e) => setSpreadsheetId(e.target.value)}
-              placeholder="Enter Spreadsheet ID" 
-              className="flex-grow p-2 border border-gray-300 rounded-md"
-            />
-            <button 
-              className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
-                <button 
-              className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
-              onClick={() => fetchPublishedCSV(spreadsheetId)}
-            >
-              Import CSV
-            </button>
-          </div>
-          <p className="text-sm text-gray-600 mt-2">
-            Important: Make sure your Google Sheet is published to the web. Go to File → Share → Publish to web, 
-            and select "Entire Document" and "CSV".
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-};
+{/* Alternative connection method */}
+<div className="mt-4 pt-4 border-t border-gray-200">
+  <h3 className="font-medium text-gray-700 mb-2">Alternative: Direct CSV Import</h3>
+  <p className="text-sm text-gray-600 mb-2">
+    If API access isn't working, try using the published CSV URL instead.
+  </p>
+  <div className="flex flex-col md:flex-row gap-4">
+    <input 
+      type="text" 
+      value={spreadsheetId}
+      onChange={(e) => setSpreadsheetId(e.target.value)}
+      placeholder="Enter Spreadsheet ID" 
+      className="flex-grow p-2 border border-gray-300 rounded-md"
+    />
+    <button 
+      className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
+      onClick={() => fetchPublishedCSV(spreadsheetId)}
+    >
+      Import CSV
+    </button>
+  </div>
+  <p className="text-sm text-gray-600 mt-2">
+    Important: Make sure your Google Sheet is published to the web. Go to File → Share → Publish to web, 
+    and select "Entire Document" and "CSV".
+  </p>
+</div>
 
 // Need to define these for the browser environment since we're not using imports
 const { useState, useEffect } = React;
