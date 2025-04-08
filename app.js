@@ -512,120 +512,33 @@ filteredData.forEach(item => {
         </div>
       )}
       
-      {/* Probability Statistics Section */}
-      {probabilityStats && (
-        <div className="mt-6">
-          <h2 className="font-semibold mb-4 text-gray-800 text-xl">Trade Result Statistics</h2>
-          
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {/* Win Rate Card */}
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-green-800">Win Rate</h3>
-                  <p className="text-3xl font-bold text-green-600">{probabilityStats.winRate}%</p>
-                </div>
-                <div className="h-12 w-12 bg-green-200 rounded-full flex items-center justify-center">
-                  <span className="text-green-700 text-xl">✓</span>
-                </div>
-              </div>
-              {probabilityStats.resultCounts && (
-                <p className="text-xs text-green-700 mt-2">
-                  {probabilityStats.resultCounts['win'] || 0} wins out of {probabilityStats.totalCount} trades
-                </p>
-              )}
+{/* Results Distribution - Keeping only this part */}
+{probabilityStats && probabilityStats.resultPercentages && (
+  <div className="mt-6">
+    <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+      <h3 className="font-medium text-gray-700 mb-3">Results Distribution</h3>
+      <div className="space-y-3">
+        {Object.entries(probabilityStats.resultPercentages).map(([result, percentage]) => (
+          <div key={result} className="space-y-1">
+            <div className="flex justify-between text-sm">
+              <span className="capitalize text-gray-600">{result.replace(/_/g, ' ')}</span>
+              <span className="font-medium">{percentage}%</span>
             </div>
-            
-            {/* Loss Rate Card */}
-            <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-red-800">Loss Rate</h3>
-                  <p className="text-3xl font-bold text-red-600">{probabilityStats.lossRate}%</p>
-                </div>
-                <div className="h-12 w-12 bg-red-200 rounded-full flex items-center justify-center">
-                  <span className="text-red-700 text-xl">✗</span>
-                </div>
-              </div>
-              {probabilityStats.resultCounts && (
-                <p className="text-xs text-red-700 mt-2">
-                  {probabilityStats.resultCounts['loss'] || 0} losses out of {probabilityStats.totalCount} trades
-                </p>
-              )}
-            </div>
-            
-            {/* Breakeven Rate Card */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-blue-800">Breakeven Rate</h3>
-                  <p className="text-3xl font-bold text-blue-600">{probabilityStats.breakEvenRate}%</p>
-                </div>
-                <div className="h-12 w-12 bg-blue-200 rounded-full flex items-center justify-center">
-                  <span className="text-blue-700 text-xl">=</span>
-                </div>
-              </div>
-              {probabilityStats.resultCounts && (
-                <p className="text-xs text-blue-700 mt-2">
-                  {probabilityStats.resultCounts['break_even'] || 0} breakevens out of {probabilityStats.totalCount} trades
-                </p>
-              )}
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div 
+                className={`h-2.5 rounded-full ${
+                  result === 'win' ? 'bg-green-500' : 
+                  result === 'loss' ? 'bg-red-500' : 'bg-blue-500'
+                }`}
+                style={{ width: `${percentage}%` }}
+              ></div>
             </div>
           </div>
-          
-          {/* Averages Table */}
-          {probabilityStats.averages && (
-            <div className="bg-white p-4 rounded-lg shadow border border-gray-200 mb-6">
-              <h3 className="font-medium text-gray-700 mb-3">Average Values</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="px-4 py-2 text-left">Metric</th>
-                      <th className="px-4 py-2 text-right">Value</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {Object.entries(probabilityStats.averages).map(([key, value]) => (
-                      <tr key={key} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 text-left capitalize">{key.replace(/_/g, ' ')}</td>
-                        <td className="px-4 py-2 text-right font-medium">{value}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-          
-          {/* Results Distribution */}
-          {probabilityStats.resultPercentages && (
-            <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
-              <h3 className="font-medium text-gray-700 mb-3">Results Distribution</h3>
-              <div className="space-y-3">
-                {Object.entries(probabilityStats.resultPercentages).map(([result, percentage]) => (
-                  <div key={result} className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="capitalize text-gray-600">{result.replace(/_/g, ' ')}</span>
-                      <span className="font-medium">{percentage}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div 
-                        className={`h-2.5 rounded-full ${
-                          result === 'win' ? 'bg-green-500' : 
-                          result === 'loss' ? 'bg-red-500' : 'bg-blue-500'
-                        }`}
-                        style={{ width: `${percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+        ))}
+      </div>
+    </div>
+  </div>
+)}
       
       {/* Visual representation area with basic chart */}
       <div className="mt-8 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
