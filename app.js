@@ -411,7 +411,7 @@ const DDRDashboard = () => {
             <h2 className="font-semibold mb-2 text-gray-700">First Hit Time</h2>
             <select 
               value={selectedHighLow}
-              onChange={(e) => setApiKey(e.target.value)}={handleHighLowChange}
+              onChange={handleHighLowChange}
               className="w-full p-2 border border-gray-300 rounded-md"
             >
               <option value="">Select time</option>
@@ -702,4 +702,79 @@ const DDRDashboard = () => {
               placeholder="Enter your Google API Key" 
               className="w-full p-2 border border-gray-300 rounded-md"
               value={apiKey}
-              onChange
+              onChange={(e) => setApiKey(e.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="spreadsheet-id" className="block text-sm font-medium text-gray-700 mb-1">
+              Spreadsheet ID
+            </label>
+            <input 
+              id="spreadsheet-id"
+              type="text" 
+              placeholder="Enter your Spreadsheet ID" 
+              className="w-full p-2 border border-gray-300 rounded-md"
+              value={spreadsheetId}
+              onChange={(e) => setSpreadsheetId(e.target.value)}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              ID from your link: 1RLktcJRtgG2Hoszy8Z5Ur9OoVZP_ROxfIpAC6zRGE0Q
+            </p>
+          </div>
+        </div>
+        <div className="mb-4">
+          <label htmlFor="sheet-name" className="block text-sm font-medium text-gray-700 mb-1">
+            Sheet Name
+          </label>
+          <input 
+            id="sheet-name"
+            type="text" 
+            placeholder="e.g., DDR Modeling Raw" 
+            className="w-full p-2 border border-gray-300 rounded-md"
+            value={sheetName}
+            onChange={(e) => {
+              setSheetName(e.target.value);
+              setSheetRange(`${e.target.value}!A1:Z1000`);
+            }}
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            File name: DDR Modeling, Sheet name: DDR Modeling Raw
+          </p>
+        </div>
+        <div className="mb-4">
+          <label htmlFor="sheet-range" className="block text-sm font-medium text-gray-700 mb-1">
+            Sheet Range (optional)
+          </label>
+          <input 
+            id="sheet-range"
+            type="text" 
+            placeholder="e.g., DDR Modeling Raw!A1:Z1000" 
+            className="w-full p-2 border border-gray-300 rounded-md"
+            value={sheetRange}
+            onChange={(e) => setSheetRange(e.target.value)}
+          />
+        </div>
+        <div className="flex justify-end">
+          <button 
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
+            onClick={() => fetchGoogleSheetsAPI(apiKey, spreadsheetId, sheetRange)}
+            disabled={!apiKey || !spreadsheetId}
+          >
+            Connect
+          </button>
+        </div>
+        <p className="mt-2 text-sm text-gray-500">
+          Important: Make sure your Google Sheet is shared with the appropriate permissions.
+          <br />
+          For API access, set the sheet to "Anyone with the link can view" or more permissive.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// Need to define these for the browser environment since we're not using imports
+const { useState, useEffect } = React;
+
+// Render the React component to the DOM
+ReactDOM.render(<DDRDashboard />, document.getElementById('root'));
