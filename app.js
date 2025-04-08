@@ -161,8 +161,13 @@ const updateDatasetCount = () => {
     return;
   }
   
-  // Create criteria object - now we look for models that START with the selected value
   console.log('Filtering with first hit:', selectedModel);
+  console.log('Selected percentage:', selectedPercentage);
+  
+  // Log a sample item to check the field names
+  if (sheetData.length > 0) {
+    console.log('Sample item:', sheetData[0]);
+  }
   
   // Filter data to find all records where the model starts with the selected value
   const matchingData = sheetData.filter(item => {
@@ -176,17 +181,11 @@ const updateDatasetCount = () => {
       return false;
     }
     
-    // Check Color % match - using color_% field (or whatever it's transformed to)
+    // Check Color % match - using bracket notation for the '%' character
     if (selectedPercentage) {
-      // Debug: Log the fields for this item to see actual field names
-      if (item && Object.keys(item).length > 0) {
-        console.log('Item fields:', Object.keys(item));
-      }
-      
-      // Try different possible field name variations
-      const colorPercentField = item['color_%'] || item['color_%25'] || item['color_percent'];
-      
-      if (colorPercentField !== selectedPercentage) {
+      // If selected percentage doesn't match, return false
+      if (item['color_%'] !== selectedPercentage) {
+        console.log(`Color % mismatch: "${item['color_%']}" vs "${selectedPercentage}"`);
         return false;
       }
     }
