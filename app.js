@@ -637,41 +637,47 @@ const DDRDashboard = () => {
         </div>
       )}
       
-      {/* Visual representation area with basic chart */}
-      <div className="mt-8 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
-        <h2 className="font-semibold mb-6 text-gray-800 text-xl">Visual Representation</h2>
-        
-        {selectedModel && probabilityStats && probabilityStats.outcomePercentages ? (
-          <div className="h-64">
-            <div className="h-full flex items-end space-x-8 justify-center">
-              {Object.entries(probabilityStats.outcomePercentages).map(([outcome, percentage]) => (
-                <div key={outcome} className="flex flex-col items-center justify-end h-full">
-                  <div 
-                    className={`w-24 ${
-                      outcome === 'Min' ? 'bg-purple-500' : 
-                      outcome === 'MinMed' ? 'bg-indigo-500' : 
-                      outcome === 'MedMax' ? 'bg-cyan-500' : 'bg-amber-500'
-                    } rounded-t-lg shadow-inner transition-all duration-500 ease-in-out`}
-                    style={{ height: `${percentage}%` }}
-                  ></div>
-                  <div className="mt-2 text-center">
-                    <p className="font-medium">{outcome}</p>
-                    <p className="text-xl font-bold">{percentage}%</p>
-                  </div>
-                </div>
-              ))}
+
+{/* Visual representation area with green opacity scale */}
+<div className="mt-8 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
+  <h2 className="font-semibold mb-6 text-gray-800 text-xl">Visual Representation</h2>
+  
+  {selectedModel && probabilityStats && probabilityStats.outcomePercentages ? (
+    <div className="h-64">
+      <div className="h-full flex items-end space-x-8 justify-center">
+        {Object.entries(probabilityStats.outcomePercentages).map(([outcome, percentage]) => {
+          // Convert percentage to opacity (0.3 to 1.0 range)
+          const percentValue = parseFloat(percentage);
+          const opacity = 0.3 + (percentValue / 100) * 0.7;
+          
+          return (
+            <div key={outcome} className="flex flex-col items-center justify-end h-full">
+              <div 
+                className="w-24 rounded-t-lg shadow-inner transition-all duration-500 ease-in-out"
+                style={{ 
+                  height: `${percentage}%`, 
+                  backgroundColor: `rgba(34, 197, 94, ${opacity})` // Green with varying opacity
+                }}
+              ></div>
+              <div className="mt-2 text-center">
+                <p className="font-medium">{outcome}</p>
+                <p className="text-xl font-bold">{percentage}%</p>
+              </div>
             </div>
-          </div>
-        ) : sheetData.length > 0 ? (
-          <div className="h-64 flex items-center justify-center">
-            <p className="text-gray-500">Select a first hit pattern and time to see probability visualization</p>
-          </div>
-        ) : (
-          <div className="h-64 flex items-center justify-center">
-            <p className="text-gray-500">Connect to your Google Sheet to see visualizations</p>
-          </div>
-        )}
+          );
+        })}
       </div>
+    </div>
+  ) : sheetData.length > 0 ? (
+    <div className="h-64 flex items-center justify-center">
+      <p className="text-gray-500">Select a first hit pattern and time to see probability visualization</p>
+    </div>
+  ) : (
+    <div className="h-64 flex items-center justify-center">
+      <p className="text-gray-500">Connect to your Google Sheet to see visualizations</p>
+    </div>
+  )}
+</div>
       
       {/* Selected Values Display */}
       {selectedModel && (
