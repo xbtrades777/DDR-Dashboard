@@ -214,19 +214,254 @@ const DDRDashboard = () => {
     }
   };
 
-  // Calculate probability statistics
-  const calculateProbabilities = (filteredData) => {
-    const totalCount = filteredData.length;
+// Calculate probability statistics
+const calculateProbabilities = (filteredData) => {
+  const totalCount = filteredData.length;
+  
+  try {
+    // Calculate second hit outcome probabilities
+    const outcomeTypes = ['Min', 'MinMed', 'MedMax', 'Max+'];
+    const outcomeCounts = {
+      'Min': 0,
+      'MinMed': 0,
+      'MedMax': 0,
+      'Max+': 0
+    };
     
-    try {
-      // Calculate second hit outcome probabilities
-      const outcomeTypes = ['Min', 'MinMed', 'MedMax', 'Max+'];
-      const outcomeCounts = {
-        'Min': 0,
-        'MinMed': 0,
-        'MedMax': 0,
-        'Max+': 0
+    // Count occurrences by parsing the Model column
+    filteredData.forEach(item => {
+      if (item.model) {
+        // Split the model value by the hyphen to get first and second hit
+        const parts = item.model.split(' - ');
+        
+        if (parts.length === 2) {
+          const secondHit = parts[1];
+          
+          // Count based on the second hit value
+          if (outcomeTypes.includes(secondHit)) {
+            outcomeCounts[secondHit]++;
+          }
+        }
+      }
+    });
+    
+    // Calculate percentages
+    const outcomePercentages = {};
+    outcomeTypes.forEach(type => {
+      outcomePercentages[type] = totalCount > 0 
+        ? ((outcomeCounts[type] / totalCount) * 100).toFixed(1) 
+        : 0;
+    });
+
+    // Calculate timing location probabilities for second hit
+    const timingLocations = ['ODR', 'Trans', 'RDR'];
+    const locationCounts = {
+      'ODR': 0,
+      'Trans': 0,
+      'RDR': 0
+    };
+
+    // Count occurrences by analyzing the first_to_second field
+    filteredData.forEach(item => {
+      if (item.first_to_second) {
+        const value = item.first_to_second;
+        
+        // Check which location it contains for the second hit
+        // The format is "X XXX - Y YYY" where YYY is the second hit location
+        const parts = value.split(' - ');
+        if (parts.length === 2) {
+          const secondHitInfo = parts[1]; // e.g., "High RDR" or "Low ODR"
+          
+          // Determine which location it is
+          if (secondHitInfo.includes('ODR')) {
+            locationCounts['ODR']++;
+          } else if (secondHitInfo.includes('Trans')) {
+            locationCounts['Trans']++;
+          } else if (secondHitInfo.includes('RDR')) {
+            locationCounts['RDR']++;
+          }
+        }
+      }
+    });
+
+    // Calculate timing location percentages
+    const locationPercentages = {};
+    timingLocations.forEach(location => {
+      locationPercentages[location] = totalCount > 0 
+        ? ((locationCounts[location] / totalCount) * 100).toFixed(1) 
+        : 0;
+    });
+    
+    // Original result type calculations (win/loss/breakeven)
+    const resultField = 'result';
+    const resultCounts = {};
+    let totalResults = 0;
+    
+    filteredData.forEach(item => {
+      if (item[resultField]) {
+        resultCounts[item[resultField]] = (resultCounts[item[resultField]] || 0) + 1;
+        totalResults++;
+      }
+    });
+    
+    const resultPercentages = {};
+    Object.keys(resultCounts).forEach(result => {
+      resultPercentages[result] = totalResults > 0 
+        ? ((resultCounts[result] / totalResults) * 100).toFixed(1) 
+        : 0;
+    });
+    
+    // Calculate average values for numeric fields
+    const numericFields = ['rdr_range', 'odr_range', 'profit', 'loss', 'drawdown'];
+    const averages = {};
+    
+    numericFields.forEach(field => {
+      const validValues = filteredData
+        .map(item => parseFloat(item[field]))
+        .filter(val => !isNaN(val));
+        
+      if (validValues.length > 0) {
+        const sum = validValues.reduce((acc, val) => acc + val, 0);
+        averages[field] = (sum / validValues.length).toFixed(2);
+      } else {
+        averages[field] = 'N/A';
+      }
+    });
+    
+    // Original win/loss rates
+    const winRate = resultPercentages['win'] || 0;
+    const lossRate = resultPercentages['loss'] || 0;
+    const breakEvenRate = resultPercentages['break_even'] || 0;
+    
+    // Calculate time statistics for filtered data
+    const calculateTimeStatistics = (filteredData) => {
+      // Arrays to store the time values
+      const startTimes = [];
+      const endTimes = [];
+      
+      // Extract time values from the filtered data
+      filteredData.forEach(item => {
+        if (item.start_time) {
+          startTimes.push(item.start_time);
+        }
+        
+        if (item.end_time) {
+          endTimes.push(item.end_time);
+        }
+      });
+      
+      // Calculate statistics for both time sets
+      const startTimeStats = analyzeTimeValues(startTimes);
+      const endTimeStats = analyzeTimeValues(endTimes);
+      
+      return {
+        startTimeStats,
+        endTimeStats
       };
+    };
+
+    // Helper function to analyze a set of time values
+    const analyzeTimeValues = (timeStrings) => {
+      if (!timeStrings.length) return { median: 'N/A', earliest: 'N/A', latest: 'N/A', mode: 'N/A', count: 0 };
+      
+      // Convert time strings to minutes since midnight for calculations
+      const timeValues = timeStrings.map(timeStr => {
+        if (!timeStr) return null;
+        
+        try {
+          // Try to parse time in format like "8:55", "14:05", etc.
+          const parts = timeStr.split(':');
+          if (parts.length === 2) {
+            const hours = parseInt(parts[0], 10);
+            const minutes = parseInt(parts[1], 10);
+            return hours * 60 + minutes;
+          }
+          return null;
+        } catch (e) {
+          console.error('Error parsing time:', timeStr, e);
+          return null;
+        }
+      }).filter(val => val !== null);
+      
+      if (!timeValues.length) return { median: 'N/A', earliest: 'N/A', latest: 'N/A', mode: 'N/A', count: 0 };
+      
+      // Sort values for median calculation
+      const sortedTimes = [...timeValues].sort((a, b) => a - b);
+      
+      // Calculate median
+      let median;
+      const mid = Math.floor(sortedTimes.length / 2);
+      if (sortedTimes.length % 2 === 0) {
+        // Even number of items - average the middle two
+        median = (sortedTimes[mid - 1] + sortedTimes[mid]) / 2;
+      } else {
+        // Odd number of items - take the middle one
+        median = sortedTimes[mid];
+      }
+      
+      // Find earliest and latest times
+      const earliest = Math.min(...timeValues);
+      const latest = Math.max(...timeValues);
+      
+      // Find most common time (mode)
+      const timeCounts = {};
+      let maxCount = 0;
+      let modeTime = timeValues[0];
+      
+      timeValues.forEach(time => {
+        // Round to nearest 5 minutes for mode calculation
+        const roundedTime = Math.round(time / 5) * 5;
+        timeCounts[roundedTime] = (timeCounts[roundedTime] || 0) + 1;
+        
+        if (timeCounts[roundedTime] > maxCount) {
+          maxCount = timeCounts[roundedTime];
+          modeTime = roundedTime;
+        }
+      });
+      
+      // Convert times from minutes back to formatted strings
+      const formatTime = (minutes) => {
+        const hours = Math.floor(minutes / 60);
+        const mins = Math.floor(minutes % 60);
+        return `${hours}:${mins.toString().padStart(2, '0')}`;
+      };
+      
+      return {
+        median: formatTime(median),
+        earliest: formatTime(earliest),
+        latest: formatTime(latest),
+        mode: formatTime(modeTime),
+        count: timeValues.length
+      };
+    };
+
+    // Add the time statistics analysis
+    const timeStats = calculateTimeStatistics(filteredData);
+
+    // Set the calculated statistics with outcome probabilities and location probabilities
+    setProbabilityStats({
+      totalCount,
+      winRate,
+      lossRate,
+      breakEvenRate,
+      outcomeCounts,
+      outcomePercentages,
+      locationCounts,
+      locationPercentages,
+      timeStats,
+      averages,
+      resultCounts,
+      resultPercentages
+    });
+    
+  } catch (error) {
+    console.error('Error calculating probabilities:', error);
+    setProbabilityStats({
+      totalCount,
+      error: error.message
+    });
+  }
+};
       
       // Count occurrences by parsing the Model column
       filteredData.forEach(item => {
@@ -610,93 +845,92 @@ const DDRDashboard = () => {
       )}
 
 {/* Time Analysis Section */}
-{probabilityStats && probabilityStats.timeAnalysis && (
+{probabilityStats && probabilityStats.timeStats && (
   <div className="mt-6">
-    <h2 className="font-semibold mb-4 text-gray-800 text-xl">Hit Time Analysis</h2>
+    <h2 className="font-semibold mb-4 text-gray-800 text-xl">Event Timing Analysis</h2>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* First Hit Time Stats */}
+      {/* First Hit Timing */}
       <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
         <h3 className="font-medium text-gray-700 mb-3 flex items-center">
           <span className="h-3 w-3 rounded-full bg-blue-500 mr-2"></span>
-          First Hit Time Statistics
+          First Hit Timing
         </h3>
         
         <table className="min-w-full text-sm">
           <tbody className="divide-y divide-gray-200">
             <tr className="hover:bg-gray-50">
-              <td className="px-4 py-2 text-left font-medium text-gray-700">Average Time</td>
-              <td className="px-4 py-2 text-right">
-                {probabilityStats.timeAnalysis.startTimeStats.average}
+              <td className="px-4 py-2 text-left font-medium text-gray-700">Median Time</td>
+              <td className="px-4 py-2 text-right font-bold text-blue-600">
+                {probabilityStats.timeStats.startTimeStats.median}
               </td>
             </tr>
             <tr className="hover:bg-gray-50">
               <td className="px-4 py-2 text-left font-medium text-gray-700">Most Common Time</td>
               <td className="px-4 py-2 text-right">
-                {probabilityStats.timeAnalysis.startTimeStats.mode}
+                {probabilityStats.timeStats.startTimeStats.mode}
               </td>
             </tr>
             <tr className="hover:bg-gray-50">
               <td className="px-4 py-2 text-left font-medium text-gray-700">Earliest Time</td>
               <td className="px-4 py-2 text-right">
-                {probabilityStats.timeAnalysis.startTimeStats.earliest}
+                {probabilityStats.timeStats.startTimeStats.earliest}
               </td>
             </tr>
             <tr className="hover:bg-gray-50">
               <td className="px-4 py-2 text-left font-medium text-gray-700">Latest Time</td>
               <td className="px-4 py-2 text-right">
-                {probabilityStats.timeAnalysis.startTimeStats.latest}
+                {probabilityStats.timeStats.startTimeStats.latest}
               </td>
             </tr>
           </tbody>
         </table>
         <div className="mt-2 text-xs text-gray-500 text-right">
-          Based on {probabilityStats.timeAnalysis.startTimeStats.count} data points
+          Based on {probabilityStats.timeStats.startTimeStats.count} data points
         </div>
       </div>
       
-      {/* Second Hit Time Stats */}
+      {/* Second Hit Timing */}
       <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
         <h3 className="font-medium text-gray-700 mb-3 flex items-center">
           <span className="h-3 w-3 rounded-full bg-green-500 mr-2"></span>
-          Second Hit Time Statistics
+          Second Hit Timing
         </h3>
         
         <table className="min-w-full text-sm">
           <tbody className="divide-y divide-gray-200">
             <tr className="hover:bg-gray-50">
-              <td className="px-4 py-2 text-left font-medium text-gray-700">Average Time</td>
-              <td className="px-4 py-2 text-right">
-                {probabilityStats.timeAnalysis.endTimeStats.average}
+              <td className="px-4 py-2 text-left font-medium text-gray-700">Median Time</td>
+              <td className="px-4 py-2 text-right font-bold text-green-600">
+                {probabilityStats.timeStats.endTimeStats.median}
               </td>
             </tr>
             <tr className="hover:bg-gray-50">
               <td className="px-4 py-2 text-left font-medium text-gray-700">Most Common Time</td>
               <td className="px-4 py-2 text-right">
-                {probabilityStats.timeAnalysis.endTimeStats.mode}
+                {probabilityStats.timeStats.endTimeStats.mode}
               </td>
             </tr>
             <tr className="hover:bg-gray-50">
               <td className="px-4 py-2 text-left font-medium text-gray-700">Earliest Time</td>
               <td className="px-4 py-2 text-right">
-                {probabilityStats.timeAnalysis.endTimeStats.earliest}
+                {probabilityStats.timeStats.endTimeStats.earliest}
               </td>
             </tr>
             <tr className="hover:bg-gray-50">
               <td className="px-4 py-2 text-left font-medium text-gray-700">Latest Time</td>
               <td className="px-4 py-2 text-right">
-                {probabilityStats.timeAnalysis.endTimeStats.latest}
+                {probabilityStats.timeStats.endTimeStats.latest}
               </td>
             </tr>
           </tbody>
         </table>
         <div className="mt-2 text-xs text-gray-500 text-right">
-          Based on {probabilityStats.timeAnalysis.endTimeStats.count} data points
+          Based on {probabilityStats.timeStats.endTimeStats.count} data points
         </div>
       </div>
     </div>
   </div>
 )}
-
       {/* Results Distribution */}
       {probabilityStats && probabilityStats.resultPercentages && (
         <div className="mt-6">
