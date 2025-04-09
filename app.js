@@ -608,7 +608,95 @@ const DDRDashboard = () => {
           </div>
         </div>
       )}
+
+{/* Time Analysis Section */}
+{probabilityStats && probabilityStats.timeAnalysis && (
+  <div className="mt-6">
+    <h2 className="font-semibold mb-4 text-gray-800 text-xl">Hit Time Analysis</h2>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* First Hit Time Stats */}
+      <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+        <h3 className="font-medium text-gray-700 mb-3 flex items-center">
+          <span className="h-3 w-3 rounded-full bg-blue-500 mr-2"></span>
+          First Hit Time Statistics
+        </h3>
+        
+        <table className="min-w-full text-sm">
+          <tbody className="divide-y divide-gray-200">
+            <tr className="hover:bg-gray-50">
+              <td className="px-4 py-2 text-left font-medium text-gray-700">Average Time</td>
+              <td className="px-4 py-2 text-right">
+                {probabilityStats.timeAnalysis.startTimeStats.average}
+              </td>
+            </tr>
+            <tr className="hover:bg-gray-50">
+              <td className="px-4 py-2 text-left font-medium text-gray-700">Most Common Time</td>
+              <td className="px-4 py-2 text-right">
+                {probabilityStats.timeAnalysis.startTimeStats.mode}
+              </td>
+            </tr>
+            <tr className="hover:bg-gray-50">
+              <td className="px-4 py-2 text-left font-medium text-gray-700">Earliest Time</td>
+              <td className="px-4 py-2 text-right">
+                {probabilityStats.timeAnalysis.startTimeStats.earliest}
+              </td>
+            </tr>
+            <tr className="hover:bg-gray-50">
+              <td className="px-4 py-2 text-left font-medium text-gray-700">Latest Time</td>
+              <td className="px-4 py-2 text-right">
+                {probabilityStats.timeAnalysis.startTimeStats.latest}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div className="mt-2 text-xs text-gray-500 text-right">
+          Based on {probabilityStats.timeAnalysis.startTimeStats.count} data points
+        </div>
+      </div>
       
+      {/* Second Hit Time Stats */}
+      <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+        <h3 className="font-medium text-gray-700 mb-3 flex items-center">
+          <span className="h-3 w-3 rounded-full bg-green-500 mr-2"></span>
+          Second Hit Time Statistics
+        </h3>
+        
+        <table className="min-w-full text-sm">
+          <tbody className="divide-y divide-gray-200">
+            <tr className="hover:bg-gray-50">
+              <td className="px-4 py-2 text-left font-medium text-gray-700">Average Time</td>
+              <td className="px-4 py-2 text-right">
+                {probabilityStats.timeAnalysis.endTimeStats.average}
+              </td>
+            </tr>
+            <tr className="hover:bg-gray-50">
+              <td className="px-4 py-2 text-left font-medium text-gray-700">Most Common Time</td>
+              <td className="px-4 py-2 text-right">
+                {probabilityStats.timeAnalysis.endTimeStats.mode}
+              </td>
+            </tr>
+            <tr className="hover:bg-gray-50">
+              <td className="px-4 py-2 text-left font-medium text-gray-700">Earliest Time</td>
+              <td className="px-4 py-2 text-right">
+                {probabilityStats.timeAnalysis.endTimeStats.earliest}
+              </td>
+            </tr>
+            <tr className="hover:bg-gray-50">
+              <td className="px-4 py-2 text-left font-medium text-gray-700">Latest Time</td>
+              <td className="px-4 py-2 text-right">
+                {probabilityStats.timeAnalysis.endTimeStats.latest}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div className="mt-2 text-xs text-gray-500 text-right">
+          Based on {probabilityStats.timeAnalysis.endTimeStats.count} data points
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
       {/* Results Distribution */}
       {probabilityStats && probabilityStats.resultPercentages && (
         <div className="mt-6">
