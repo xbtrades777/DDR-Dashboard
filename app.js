@@ -638,30 +638,51 @@ const DDRDashboard = () => {
       )}
       
 
-{/* Visual representation area with green opacity scale */}
+{/* Visual representation area with enhanced bar distinction */}
 <div className="mt-8 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
   <h2 className="font-semibold mb-6 text-gray-800 text-xl">Visual Representation</h2>
   
   {selectedModel && probabilityStats && probabilityStats.outcomePercentages ? (
     <div className="h-64">
       <div className="h-full flex items-end space-x-8 justify-center">
-        {Object.entries(probabilityStats.outcomePercentages).map(([outcome, percentage]) => {
-          // Convert percentage to opacity (0.3 to 1.0 range)
+        {Object.entries(probabilityStats.outcomePercentages).map(([outcome, percentage], index) => {
+          // Convert percentage to opacity (0.15 to 1.0 range)
           const percentValue = parseFloat(percentage);
-          const opacity = 0.3 + (percentValue / 100) * 0.7;
+          const opacity = 0.15 + (percentValue / 100) * 0.85;
+          
+          // Use a slightly different green shade for each bar
+          const greenHues = [
+            '34, 197, 94',  // Regular green
+            '22, 163, 74',  // Darker green
+            '16, 185, 129', // Teal-green
+            '5, 150, 105'   // Deep green
+          ];
+          
+          // Get the green shade for this index
+          const greenColor = greenHues[index % greenHues.length];
           
           return (
             <div key={outcome} className="flex flex-col items-center justify-end h-full">
               <div 
-                className="w-24 rounded-t-lg shadow-inner transition-all duration-500 ease-in-out"
+                className="w-24 rounded-t-lg shadow-inner transition-all duration-500 ease-in-out relative overflow-hidden"
                 style={{ 
-                  height: `${percentage}%`, 
-                  backgroundColor: `rgba(34, 197, 94, ${opacity})` // Green with varying opacity
+                  height: `${Math.max(3, percentage)}%`, // Ensure at least 3% height for visibility
+                  border: '1px solid rgba(0,0,0,0.1)',
+                  boxShadow: 'inset 0 0 10px rgba(0,0,0,0.05)'
                 }}
-              ></div>
+              >
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: `linear-gradient(to bottom, rgba(${greenColor}, ${opacity + 0.1}) 0%, rgba(${greenColor}, ${opacity}) 100%)`,
+                  }}
+                ></div>
+                <div className="absolute bottom-0 w-full text-center text-xs text-white font-semibold px-1 py-0.5 bg-black bg-opacity-30">
+                  {percentage}%
+                </div>
+              </div>
               <div className="mt-2 text-center">
                 <p className="font-medium">{outcome}</p>
-                <p className="text-xl font-bold">{percentage}%</p>
               </div>
             </div>
           );
@@ -678,22 +699,6 @@ const DDRDashboard = () => {
     </div>
   )}
 </div>
-      
-      {/* Selected Values Display */}
-      {selectedModel && (
-        <div className="mt-8 p-4 bg-blue-50 rounded-md">
-          <h2 className="font-semibold mb-2 text-gray-700">Selected Values:</h2>
-          <p><strong>First Hit Pattern:</strong> {selectedModel || 'None'}</p>
-          <p><strong>First Hit Time:</strong> {selectedHighLow || 'None'}</p>
-          {showColorSelection && (
-            <p><strong>Color:</strong> {selectedColor || 'None'}</p>
-          )}
-          {showPercentage && (
-            <p><strong>Percentage:</strong> {selectedPercentage || 'None'}</p>
-          )}
-        </div>
-      )}
-
       {/* Google Sheets API Connection UI */}
       <div className="mt-8 p-4 bg-gray-50 rounded-md">
         <h2 className="font-semibold mb-4 text-gray-700">Google Sheets API Connection</h2>
