@@ -136,23 +136,42 @@ const DDRDashboard = React.createClass({
         : 0;
     });
 
-    // Calculate median and 70th percentile for First Hit Time and Second Hit Time
-    const firstHitTimes = filteredData.map(item => item.first_hit_time).filter(time => time).sort((a, b) => {
-      return this.parseTime(a) - this.parseTime(b);
-    });
-    const secondHitTimes = filteredData.map(item => {
+    // Count frequency of each unique First Hit Time and Second Hit Time
+    const firstHitFreq = {};
+    const secondHitFreq = {};
+    filteredData.forEach(item => {
+      if (item.first_hit_time) firstHitFreq[item.first_hit_time] = (firstHitFreq[item.first_hit_time] || 0) + 1;
       if (item.model && item.model.includes('-')) {
-        return item.model.split(' - ')[1];
+        const secondHit = item.model.split(' - ')[1];
+        if (outcomeTypes.includes(secondHit)) secondHitFreq[secondHit] = (secondHitFreq[secondHit] || 0) + 1;
       }
-      return null;
-    }).filter(time => time && outcomeTypes.includes(time)).sort((a, b) => {
-      return this.parseTime(a) - this.parseTime(b);
     });
 
-    const medianFirstHitTime = firstHitTimes[Math.floor(firstHitTimes.length / 2)] || 'N/A';
-    const medianSecondHitTime = secondHitTimes[Math.floor(secondHitTimes.length / 2)] || 'N/A';
-    const percentile70FirstHitTime = firstHitTimes[Math.floor(firstHitTimes.length * 0.7)] || 'N/A';
-    const percentile70SecondHitTime = secondHitTimes[Math.floor(secondHitTimes.length * 0.7)] || 'N/A';
+    // Sort by frequency for median and 70th percentile
+    const firstHitTimes = Object.keys(firstHitFreq).sort();
+    const secondHitTimes = Object.keys(secondHitFreq).sort();
+    const firstHitCumFreq = Object.values(firstHitFreq).sort((a, b) => b - a).reduce((acc, val) => acc + val, 0);
+    const secondHitCumFreq = Object.values(secondHitFreq).sort((a, b) => b - a).reduce((acc, val) => acc + val, 0);
+
+    let firstHitMedianIdx = 0, firstHit70thIdx = 0;
+    let secondHitMedianIdx = 0, secondHit70thIdx = 0;
+    let firstHitCum = 0, secondHitCum = 0;
+
+    for (let i = 0; i < firstHitTimes.length; i++) {
+      firstHitCum += firstHitFreq[firstHitTimes[i]];
+      if (firstHitMedianIdx === 0 && firstHitCum >= firstHitCumFreq / 2) firstHitMedianIdx = i;
+      if (firstHit70thIdx === 0 && firstHitCum >= firstHitCumFreq * 0.7) firstHit70thIdx = i;
+    }
+    for (let i = 0; i < secondHitTimes.length; i++) {
+      secondHitCum += secondHitFreq[secondHitTimes[i]];
+      if (secondHitMedianIdx === 0 && secondHitCum >= secondHitCumFreq / 2) secondHitMedianIdx = i;
+      if (secondHit70thIdx === 0 && secondHitCum >= secondHitCumFreq * 0.7) secondHit70thIdx = i;
+    }
+
+    const medianFirstHitTime = firstHitTimes[firstHitMedianIdx] || 'N/A';
+    const medianSecondHitTime = secondHitTimes[secondHitMedianIdx] || 'N/A';
+    const percentile70FirstHitTime = firstHitTimes[firstHit70thIdx] || 'N/A';
+    const percentile70SecondHitTime = secondHitTimes[secondHit70thIdx] || 'N/A';
 
     this.setState({
       probabilityStats: {
@@ -163,17 +182,12 @@ const DDRDashboard = React.createClass({
         medianSecondHitTime,
         percentile70FirstHitTime,
         percentile70SecondHitTime,
+        firstHitFreq,
+        secondHitFreq,
         firstHitTimes,
         secondHitTimes
       }
     });
-  },
-
-  parseTime(timeStr) {
-    if (!timeStr) return 0;
-    const [value, unit] = timeStr.split(' ');
-    const numValue = parseFloat(value);
-    return unit === 'min' ? numValue * 60 : numValue; // Convert minutes to seconds for sorting
   },
 
   handleModelChange(event) {
@@ -421,7 +435,7 @@ const DDRDashboard = React.createClass({
           )
         )
       ),
-      this.state.probabilityStats && this.state.probabilityStats.firstHitTimes && this.state.probabilityStats.secondHitTimes && React.createElement(
+      this.state.probabilityStats && this.state.probabilityStats.firstHitFreq && this.state.probabilityStats.secondHitFreq && React.createElement(
         'div',
         { className: 'mt-6' },
         React.createElement('h2', { className: 'font-semibold mb-4 text-gray-800 text-xl' }, 'Hit Time Distribution'),
@@ -435,30 +449,30 @@ const DDRDashboard = React.createClass({
             React.createElement(
               'svg',
               { width: '400', height: '200', className: 'border border-gray-300 rounded' },
-              this.state.probabilityStats.firstHitTimes.map((time, index) => {
-                const x = index * 20;
-                const y = this.parseTime(time) > 0 ? 200 - (this.parseTime(time) / 60 * 20) : 0; // Normalize to 0-200px
+              Object.keys(this.state.probabilityStats.firstHitFreq).map((time, index) => {
+                const x = index * 40;
+                const height = (this.state.probabilityStats.firstHitFreq[time] / this.state.probabilityStats.totalCount) * 200;
                 return React.createElement('rect', {
-                  key: index,
+                  key: time,
                   x: x,
-                  y: y,
-                  width: 18,
-                  height: 200 - y,
+                  y: 200 - height,
+                  width: 38,
+                  height: height,
                   fill: '#3498DB'
                 });
               }),
               this.state.probabilityStats.medianFirstHitTime !== 'N/A' && React.createElement('line', {
-                x1: this.state.probabilityStats.firstHitTimes.indexOf(this.state.probabilityStats.medianFirstHitTime) * 20 + 9,
+                x1: Object.keys(this.state.probabilityStats.firstHitFreq).indexOf(this.state.probabilityStats.medianFirstHitTime) * 40 + 19,
                 y1: 0,
-                x2: this.state.probabilityStats.firstHitTimes.indexOf(this.state.probabilityStats.medianFirstHitTime) * 20 + 9,
+                x2: Object.keys(this.state.probabilityStats.firstHitFreq).indexOf(this.state.probabilityStats.medianFirstHitTime) * 40 + 19,
                 y2: 200,
                 stroke: 'white',
                 strokeWidth: 2
               }),
               this.state.probabilityStats.percentile70FirstHitTime !== 'N/A' && React.createElement('line', {
-                x1: this.state.probabilityStats.firstHitTimes.indexOf(this.state.probabilityStats.percentile70FirstHitTime) * 20 + 9,
+                x1: Object.keys(this.state.probabilityStats.firstHitFreq).indexOf(this.state.probabilityStats.percentile70FirstHitTime) * 40 + 19,
                 y1: 0,
-                x2: this.state.probabilityStats.firstHitTimes.indexOf(this.state.probabilityStats.percentile70FirstHitTime) * 20 + 9,
+                x2: Object.keys(this.state.probabilityStats.firstHitFreq).indexOf(this.state.probabilityStats.percentile70FirstHitTime) * 40 + 19,
                 y2: 200,
                 stroke: 'blue',
                 strokeWidth: 2
@@ -474,30 +488,30 @@ const DDRDashboard = React.createClass({
             React.createElement(
               'svg',
               { width: '400', height: '200', className: 'border border-gray-300 rounded' },
-              this.state.probabilityStats.secondHitTimes.map((time, index) => {
-                const x = index * 20;
-                const y = this.parseTime(time) > 0 ? 200 - (this.parseTime(time) / 60 * 20) : 0; // Normalize to 0-200px
+              Object.keys(this.state.probabilityStats.secondHitFreq).map((time, index) => {
+                const x = index * 40;
+                const height = (this.state.probabilityStats.secondHitFreq[time] / this.state.probabilityStats.totalCount) * 200;
                 return React.createElement('rect', {
-                  key: index,
+                  key: time,
                   x: x,
-                  y: y,
-                  width: 18,
-                  height: 200 - y,
+                  y: 200 - height,
+                  width: 38,
+                  height: height,
                   fill: '#E74C3C'
                 });
               }),
               this.state.probabilityStats.medianSecondHitTime !== 'N/A' && React.createElement('line', {
-                x1: this.state.probabilityStats.secondHitTimes.indexOf(this.state.probabilityStats.medianSecondHitTime) * 20 + 9,
+                x1: Object.keys(this.state.probabilityStats.secondHitFreq).indexOf(this.state.probabilityStats.medianSecondHitTime) * 40 + 19,
                 y1: 0,
-                x2: this.state.probabilityStats.secondHitTimes.indexOf(this.state.probabilityStats.medianSecondHitTime) * 20 + 9,
+                x2: Object.keys(this.state.probabilityStats.secondHitFreq).indexOf(this.state.probabilityStats.medianSecondHitTime) * 40 + 19,
                 y2: 200,
                 stroke: 'white',
                 strokeWidth: 2
               }),
               this.state.probabilityStats.percentile70SecondHitTime !== 'N/A' && React.createElement('line', {
-                x1: this.state.probabilityStats.secondHitTimes.indexOf(this.state.probabilityStats.percentile70SecondHitTime) * 20 + 9,
+                x1: Object.keys(this.state.probabilityStats.secondHitFreq).indexOf(this.state.probabilityStats.percentile70SecondHitTime) * 40 + 19,
                 y1: 0,
-                x2: this.state.probabilityStats.secondHitTimes.indexOf(this.state.probabilityStats.percentile70SecondHitTime) * 20 + 9,
+                x2: Object.keys(this.state.probabilityStats.secondHitFreq).indexOf(this.state.probabilityStats.percentile70SecondHitTime) * 40 + 19,
                 y2: 200,
                 stroke: 'blue',
                 strokeWidth: 2
