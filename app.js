@@ -107,16 +107,29 @@ const DDRDashboard = function() {
       var firstHitStats = calculateTimingStats(sheetData, 'first_hit_time');
       var secondHitStats = calculateTimingStats(sheetData, 'second_hit_time');
       setProbabilityStats(function(prev) {
+        if (!prev) {
+          prev = {
+            totalCount: 0,
+            winRate: 0,
+            lossRate: 0,
+            breakEvenRate: 0,
+            outcomeCounts: { 'Min': 0, 'MinMed': 0, 'MedMax': 0, 'Max+': 0 },
+            outcomePercentages: {},
+            averages: {},
+            resultCounts: {},
+            resultPercentages: {}
+          };
+        }
         return {
-          totalCount: prev ? prev.totalCount : 0,
-          winRate: prev ? prev.winRate : 0,
-          lossRate: prev ? prev.lossRate : 0,
-          breakEvenRate: prev ? prev.breakEvenRate : 0,
-          outcomeCounts: prev ? prev.outcomeCounts : { 'Min': 0, 'MinMed': 0, 'MedMax': 0, 'Max+': 0 },
-          outcomePercentages: prev ? prev.outcomePercentages : {},
-          averages: prev ? prev.averages : {},
-          resultCounts: prev ? prev.resultCounts : {},
-          resultPercentages: prev ? prev.resultPercentages : {},
+          totalCount: prev.totalCount,
+          winRate: prev.winRate,
+          lossRate: prev.lossRate,
+          breakEvenRate: prev.breakEvenRate,
+          outcomeCounts: prev.outcomeCounts,
+          outcomePercentages: prev.outcomePercentages,
+          averages: prev.averages,
+          resultCounts: prev.resultCounts,
+          resultPercentages: prev.resultPercentages,
           firstHitStats: firstHitStats,
           secondHitStats: secondHitStats
         };
