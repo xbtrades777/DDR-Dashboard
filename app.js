@@ -52,6 +52,10 @@ const DDRDashboard = () => {
   const [error, setError] = useState(null);
   const [probabilityStats, setProbabilityStats] = useState(null);
 
+  // State for time distribution charts
+  const [firstHitTimeDistribution, setFirstHitTimeDistribution] = useState(null);
+  const [secondHitTimeDistribution, setSecondHitTimeDistribution] = useState(null);
+
   // State for API connection parameters
   const [apiKey, setApiKey] = useState('AIzaSyBB5_LHGAX_tirA23TzDEesMJhm_Srrs9s');
   const [spreadsheetId, setSpreadsheetId] = useState('1RLktcJRtgG2Hoszy8Z5Ur9OoVZP_ROxfIpAC6zRGE0Q');
@@ -89,6 +93,25 @@ const DDRDashboard = () => {
   useEffect(() => {
     updateDatasetCount();
   }, [selectedModel, selectedHighLow, selectedColor, selectedPercentage, sheetData]);
+
+  // Function to parse time strings to get hour value
+  const parseTimeToTimeBlock = (timeStr) => {
+    if (!timeStr) return null;
+    
+    // Extract time part from strings like "Low ODR 3:30"
+    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
+    if (!timeMatch) return null;
+    
+    const hour = parseInt(timeMatch[1], 10);
+    const minute = parseInt(timeMatch[2], 10);
+    
+    // Create time block in 15-minute intervals
+    const minuteBlock = Math.floor(minute / 15) * 15;
+    const formattedHour = hour.toString().padStart(2, '0');
+    const formattedMinute = minuteBlock.toString().padStart(2, '0');
+    
+    return `${formattedHour}:${formattedMinute}`;
+  };
 
   // Function to fetch data from Google Sheets API
   const fetchGoogleSheetsAPI = async (apiKey, spreadsheetId, range = 'DDR Modeling Raw!A1:Z1000') => {
@@ -158,6 +181,8 @@ const DDRDashboard = () => {
     if (!selectedModel || sheetData.length === 0) {
       setDatasetCount(0);
       setProbabilityStats(null);
+      setFirstHitTimeDistribution(null);
+      setSecondHitTimeDistribution(null);
       return;
     }
     
@@ -207,9 +232,66 @@ const DDRDashboard = () => {
     // Calculate probabilities if we have matching data
     if (matchingData.length > 0) {
       calculateProbabilities(matchingData);
+      calculateTimeDistributions(matchingData);
     } else {
       setProbabilityStats(null);
+      setFirstHitTimeDistribution(null);
+      setSecondHitTimeDistribution(null);
     }
+  };
+
+  // Calculate time distributions for first and second hit times
+  const calculateTimeDistributions = (filteredData) => {
+    // Generate all time blocks from 03:00 to 15:55 in 15-min intervals
+    const timeBlocks = [];
+    for (let hour = 3; hour <= 15; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const formattedHour = hour.toString().padStart(2, '0');
+        const formattedMinute = minute.toString().padStart(2, '0');
+        timeBlocks.push(`${formattedHour}:${formattedMinute}`);
+      }
+    }
+    
+    // Initialize counters for first hit times
+    const firstHitCounts = {};
+    timeBlocks.forEach(block => {
+      firstHitCounts[block] = 0;
+    });
+    
+    // Initialize counters for second hit times
+    const secondHitCounts = {};
+    timeBlocks.forEach(block => {
+      secondHitCounts[block] = 0;
+    });
+
+    // Count occurrences of each time block
+    filteredData.forEach(item => {
+      // Process first hit time
+      const firstHitTimeBlock = parseTimeToTimeBlock(item.first_hit_time_exact);
+      if (firstHitTimeBlock && firstHitCounts.hasOwnProperty(firstHitTimeBlock)) {
+        firstHitCounts[firstHitTimeBlock]++;
+      }
+      
+      // Process second hit time
+      const secondHitTimeBlock = parseTimeToTimeBlock(item.second_hit_time_exact);
+      if (secondHitTimeBlock && secondHitCounts.hasOwnProperty(secondHitTimeBlock)) {
+        secondHitCounts[secondHitTimeBlock]++;
+      }
+    });
+    
+    // Convert to arrays for Chart.js
+    const firstHitDistribution = {
+      labels: timeBlocks,
+      data: timeBlocks.map(block => firstHitCounts[block])
+    };
+    
+    const secondHitDistribution = {
+      labels: timeBlocks,
+      data: timeBlocks.map(block => secondHitCounts[block])
+    };
+    
+    setFirstHitTimeDistribution(firstHitDistribution);
+    setSecondHitTimeDistribution(secondHitDistribution);
   };
 
   // Calculate probability statistics
@@ -328,6 +410,90 @@ const DDRDashboard = () => {
       });
     }
   };
+
+  // Function to render time distribution chart using Chart.js
+  const renderTimeDistributionChart = (canvasId, distributionData, title, color) => {
+    if (!distributionData || !document.getElementById(canvasId)) return;
+
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    
+    // Destroy previous chart if it exists
+    if (window[canvasId + 'Chart']) {
+      window[canvasId + 'Chart'].destroy();
+    }
+    
+    window[canvasId + 'Chart'] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: distributionData.labels,
+        datasets: [{
+          label: title,
+          data: distributionData.data,
+          backgroundColor: color,
+          borderColor: color.replace('0.7', '1.0'),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          title: {
+            display: true,
+            text: title,
+            font: {
+              size: 16
+            }
+          },
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Number of Occurrences'
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Time (15-minute intervals)'
+            },
+            ticks: {
+              maxRotation: 90,
+              minRotation: 90,
+              autoSkip: true,
+              maxTicksLimit: 20
+            }
+          }
+        }
+      }
+    });
+  };
+
+  // Effect to render time distribution charts when data changes
+  useEffect(() => {
+    if (firstHitTimeDistribution) {
+      renderTimeDistributionChart(
+        'firstHitTimeChart', 
+        firstHitTimeDistribution, 
+        'First Hit Time Distribution', 
+        'rgba(54, 162, 235, 0.7)'
+      );
+    }
+    
+    if (secondHitTimeDistribution) {
+      renderTimeDistributionChart(
+        'secondHitTimeChart', 
+        secondHitTimeDistribution, 
+        'Second Hit Time Distribution', 
+        'rgba(255, 99, 132, 0.7)'
+      );
+    }
+  }, [firstHitTimeDistribution, secondHitTimeDistribution]);
 
   // Handle model selection change
   const handleModelChange = (event) => {
@@ -449,6 +615,25 @@ const DDRDashboard = () => {
           <div className="flex items-center bg-white px-4 py-2 rounded-full shadow">
             <span className="text-2xl font-bold text-blue-600 mr-2">{datasetCount}</span>
             <span className="text-gray-500 text-sm">records</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Hit Time Distribution Charts */}
+      <div className="mt-6">
+        <h2 className="font-semibold mb-4 text-gray-800 text-xl">Time Distribution Analysis</h2>
+        
+        {/* First Hit Time Distribution */}
+        <div className="bg-white p-4 rounded-lg shadow border border-gray-200 mb-6">
+          <div style={{ height: "300px" }}>
+            <canvas id="firstHitTimeChart"></canvas>
+          </div>
+        </div>
+        
+        {/* Second Hit Time Distribution */}
+        <div className="bg-white p-4 rounded-lg shadow border border-gray-200 mb-6">
+          <div style={{ height: "300px" }}>
+            <canvas id="secondHitTimeChart"></canvas>
           </div>
         </div>
       </div>
