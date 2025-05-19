@@ -28,13 +28,13 @@ const DDRDashboard = () => {
     'Max+ Red'
   ];
 
-// Percentage options for Min
-const percentageOptions = [
-  'Green 0 - 50%',
-  'Green 50 - 100%',
-  'Red 0 - 50%',
-  'Red 50 - 100%'
-];
+  // Percentage options for Min
+  const percentageOptions = [
+    'Green 0 - 50%',
+    'Green 50 - 100%',
+    'Red 0 - 50%',
+    'Red 50 - 100%'
+  ];
 
   // State for selections
   const [selectedModel, setSelectedModel] = useState('');
@@ -51,6 +51,10 @@ const percentageOptions = [
   const [sheetData, setSheetData] = useState([]);
   const [error, setError] = useState(null);
   const [probabilityStats, setProbabilityStats] = useState(null);
+
+  // State for time distribution charts
+  const [firstHitTimeDistribution, setFirstHitTimeDistribution] = useState(null);
+  const [secondHitTimeDistribution, setSecondHitTimeDistribution] = useState(null);
 
   // State for API connection parameters
   const [apiKey, setApiKey] = useState('AIzaSyBB5_LHGAX_tirA23TzDEesMJhm_Srrs9s');
@@ -89,6 +93,25 @@ const percentageOptions = [
   useEffect(() => {
     updateDatasetCount();
   }, [selectedModel, selectedHighLow, selectedColor, selectedPercentage, sheetData]);
+
+  // Function to parse time strings to get hour value
+  const parseTimeToTimeBlock = (timeStr) => {
+    if (!timeStr) return null;
+    
+    // Extract time part from strings like "Low ODR 3:30"
+    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
+    if (!timeMatch) return null;
+    
+    const hour = parseInt(timeMatch[1], 10);
+    const minute = parseInt(timeMatch[2], 10);
+    
+    // Create time block in 15-minute intervals
+    const minuteBlock = Math.floor(minute / 15) * 15;
+    const formattedHour = hour.toString().padStart(2, '0');
+    const formattedMinute = minuteBlock.toString().padStart(2, '0');
+    
+    return `${formattedHour}:${formattedMinute}`;
+  };
 
   // Function to fetch data from Google Sheets API
   const fetchGoogleSheetsAPI = async (apiKey, spreadsheetId, range = 'DDR Modeling Raw!A1:Z1000') => {
@@ -153,66 +176,173 @@ const percentageOptions = [
     }
   };
 
-// Function to update dataset count based on selected criteria
-const updateDatasetCount = () => {
-  if (!selectedModel || sheetData.length === 0) {
-    setDatasetCount(0);
-    setProbabilityStats(null);
-    return;
-  }
-  
-  console.log('Filtering with first hit:', selectedModel);
-  console.log('Selected percentage:', selectedPercentage);
-  
-  // Log a sample item to check the field names
-  if (sheetData.length > 0) {
-    console.log('Sample item:', sheetData[0]);
-  }
-  
-  // Filter data to find all records where the model starts with the selected value
-  const matchingData = sheetData.filter(item => {
-    // Check if model exists and starts with the selected model
-    if (selectedModel && (!item.model || !item.model.startsWith(selectedModel + ' -'))) {
-      return false;
+  // Function to update dataset count based on selected criteria
+  const updateDatasetCount = () => {
+    if (!selectedModel || sheetData.length === 0) {
+      setDatasetCount(0);
+      setProbabilityStats(null);
+      setFirstHitTimeDistribution(null);
+      setSecondHitTimeDistribution(null);
+      return;
     }
     
-    // Check outside_min_start match
-    if (selectedColor && item.outside_min_start !== selectedColor) {
-      return false;
+    // Create criteria object - now we look for models that START with the selected value
+    console.log('Filtering with first hit:', selectedModel);
+    console.log('Selected percentage:', selectedPercentage);
+    
+    // Log a sample item to check the field names
+    if (sheetData.length > 0) {
+      console.log('Sample item:', sheetData[0]);
     }
     
-// Check Color % match
-if (selectedPercentage) {
-  // Get the value in the data
-  const itemColorPercentage = item['color_%'];
-  
-  // Compare with the selected value
-  if (itemColorPercentage !== selectedPercentage) {
-    console.log(`Color % mismatch: "${itemColorPercentage}" vs "${selectedPercentage}"`);
-    return false;
-  }
-}
+    // Filter data to find all records where the model starts with the selected value
+    const matchingData = sheetData.filter(item => {
+      // Check if model exists and starts with the selected model
+      if (selectedModel && (!item.model || !item.model.startsWith(selectedModel + ' -'))) {
+        return false;
+      }
+      
+      // Check outside_min_start match
+      if (selectedColor && item.outside_min_start !== selectedColor) {
+        return false;
+      }
+      
+      // Check Color % match - using bracket notation for the '%' character
+      if (selectedPercentage) {
+        // If selected percentage doesn't match, return false
+        if (item['color_%'] !== selectedPercentage) {
+          console.log(`Color % mismatch: "${item['color_%']}" vs "${selectedPercentage}"`);
+          return false;
+        }
+      }
+      
+      // Check First Hit Time match
+      if (selectedHighLow && item.first_hit_time !== selectedHighLow) {
+        return false;
+      }
+      
+      return true;
+    });
     
-    // Check First Hit Time match
-    if (selectedHighLow && item.first_hit_time !== selectedHighLow) {
-      return false;
+    console.log('Found matching datasets:', matchingData.length);
+    
+    // Update count
+    setDatasetCount(matchingData.length);
+    
+    // Calculate probabilities if we have matching data
+    if (matchingData.length > 0) {
+      calculateProbabilities(matchingData);
+      calculateTimeDistributions(matchingData);
+    } else {
+      setProbabilityStats(null);
+      setFirstHitTimeDistribution(null);
+      setSecondHitTimeDistribution(null);
+    }
+  };
+
+  // Calculate time distributions for first and second hit times
+  const calculateTimeDistributions = (filteredData) => {
+    // Check if required columns exist
+    const sampleItem = filteredData[0] || {};
+    const hasFirstHitTime = 'first_hit_time_15_min' in sampleItem || 'first_hit_time_30_min' in sampleItem || 'first_hit_time_60_min' in sampleItem;
+    const hasSecondHitTime = 'second_hit_time_15_min' in sampleItem || 'second_hit_time_30_min' in sampleItem || 'second_hit_time_60_min' in sampleItem;
+    
+    console.log('Available columns for time distribution:', Object.keys(sampleItem));
+    console.log('Has first hit time columns:', hasFirstHitTime);
+    console.log('Has second hit time columns:', hasSecondHitTime);
+    
+    // If we don't have the required columns, use a simpler approach
+    if (!hasFirstHitTime || !hasSecondHitTime) {
+      // Use the session information (ODR, Trans, RDR) to approximate time buckets
+      const timeCategories = ['ODR', 'Trans', 'RDR'];
+      const firstHitCounts = { 'ODR': 0, 'Trans': 0, 'RDR': 0 };
+      const secondHitCounts = { 'ODR': 0, 'Trans': 0, 'RDR': 0 };
+      
+      filteredData.forEach(item => {
+        // Process first hit session
+        if (item.first_hit_time) {
+          const session = item.first_hit_time.includes('ODR') ? 'ODR' : 
+                         item.first_hit_time.includes('Trans') ? 'Trans' : 
+                         item.first_hit_time.includes('RDR') ? 'RDR' : null;
+          
+          if (session) firstHitCounts[session]++;
+        }
+        
+        // Process second hit session
+        if (item.second_hit_time) {
+          const session = item.second_hit_time.includes('ODR') ? 'ODR' : 
+                         item.second_hit_time.includes('Trans') ? 'Trans' : 
+                         item.second_hit_time.includes('RDR') ? 'RDR' : null;
+          
+          if (session) secondHitCounts[session]++;
+        }
+      });
+      
+      // Set the simplified distributions
+      setFirstHitTimeDistribution({
+        labels: timeCategories,
+        data: timeCategories.map(cat => firstHitCounts[cat])
+      });
+      
+      setSecondHitTimeDistribution({
+        labels: timeCategories,
+        data: timeCategories.map(cat => secondHitCounts[cat])
+      });
+      
+      return;
     }
     
-    return true;
-  });
-  
-  console.log('Found matching datasets:', matchingData.length);
-  
-  // Update count
-  setDatasetCount(matchingData.length);
-  
-  // Calculate probabilities if we have matching data
-  if (matchingData.length > 0) {
-    calculateProbabilities(matchingData);
-  } else {
-    setProbabilityStats(null);
-  }
-};
+    // Generate all time blocks from 03:00 to 15:55 in 15-min intervals
+    const timeBlocks = [];
+    for (let hour = 3; hour <= 15; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const formattedHour = hour.toString().padStart(2, '0');
+        const formattedMinute = minute.toString().padStart(2, '0');
+        timeBlocks.push(`${formattedHour}:${formattedMinute}`);
+      }
+    }
+    
+    // Initialize counters for first hit times
+    const firstHitCounts = {};
+    timeBlocks.forEach(block => {
+      firstHitCounts[block] = 0;
+    });
+    
+    // Initialize counters for second hit times
+    const secondHitCounts = {};
+    timeBlocks.forEach(block => {
+      secondHitCounts[block] = 0;
+    });
+
+    // Count occurrences of each time block
+    filteredData.forEach(item => {
+      // Process first hit time
+      const firstHitTimeBlock = parseTimeToTimeBlock(item.first_hit_time_exact);
+      if (firstHitTimeBlock && firstHitCounts.hasOwnProperty(firstHitTimeBlock)) {
+        firstHitCounts[firstHitTimeBlock]++;
+      }
+      
+      // Process second hit time
+      const secondHitTimeBlock = parseTimeToTimeBlock(item.second_hit_time_exact);
+      if (secondHitTimeBlock && secondHitCounts.hasOwnProperty(secondHitTimeBlock)) {
+        secondHitCounts[secondHitTimeBlock]++;
+      }
+    });
+    
+    // Convert to arrays for Chart.js
+    const firstHitDistribution = {
+      labels: timeBlocks,
+      data: timeBlocks.map(block => firstHitCounts[block])
+    };
+    
+    const secondHitDistribution = {
+      labels: timeBlocks,
+      data: timeBlocks.map(block => secondHitCounts[block])
+    };
+    
+    setFirstHitTimeDistribution(firstHitDistribution);
+    setSecondHitTimeDistribution(secondHitDistribution);
+  };
 
   // Calculate probability statistics
   const calculateProbabilities = (filteredData) => {
@@ -228,28 +358,67 @@ if (selectedPercentage) {
         'Max+': 0
       };
       
-// Count occurrences by parsing the Model column
-filteredData.forEach(item => {
-  if (item.model) {
-    // Split the model value by the hyphen to get first and second hit
-    const parts = item.model.split(' - ');
-    
-    if (parts.length === 2) {
-      const secondHit = parts[1];
-      
-      // Count based on the second hit value
-      if (outcomeTypes.includes(secondHit)) {
-        outcomeCounts[secondHit]++;
-      }
-    }
-  }
-});
+      // Count occurrences by parsing the Model column
+      filteredData.forEach(item => {
+        if (item.model) {
+          // Split the model value by the hyphen to get first and second hit
+          const parts = item.model.split(' - ');
+          
+          if (parts.length === 2) {
+            const secondHit = parts[1];
+            
+            // Count based on the second hit value
+            if (outcomeTypes.includes(secondHit)) {
+              outcomeCounts[secondHit]++;
+            }
+          }
+        }
+      });
       
       // Calculate percentages
       const outcomePercentages = {};
       outcomeTypes.forEach(type => {
         outcomePercentages[type] = totalCount > 0 
           ? ((outcomeCounts[type] / totalCount) * 100).toFixed(1) 
+          : 0;
+      });
+      
+      // Calculate timing location probabilities for second hit
+      const timingLocations = ['ODR', 'Trans', 'RDR'];
+      const locationCounts = {
+        'ODR': 0,
+        'Trans': 0,
+        'RDR': 0
+      };
+      
+      // Count occurrences by analyzing the First to Second field
+      filteredData.forEach(item => {
+        if (item.first_to_second) {
+          const value = item.first_to_second;
+          
+          // Check which location it contains for the second hit
+          // The format is "X XXX - Y YYY" where YYY is the second hit location
+          const parts = value.split(' - ');
+          if (parts.length === 2) {
+            const secondHitInfo = parts[1]; // e.g., "High RDR" or "Low ODR"
+            
+            // Determine which location it is
+            if (secondHitInfo.includes('ODR')) {
+              locationCounts['ODR']++;
+            } else if (secondHitInfo.includes('Trans')) {
+              locationCounts['Trans']++;
+            } else if (secondHitInfo.includes('RDR')) {
+              locationCounts['RDR']++;
+            }
+          }
+        }
+      });
+      
+      // Calculate percentages
+      const locationPercentages = {};
+      timingLocations.forEach(location => {
+        locationPercentages[location] = totalCount > 0 
+          ? ((locationCounts[location] / totalCount) * 100).toFixed(1) 
           : 0;
       });
       
@@ -272,37 +441,13 @@ filteredData.forEach(item => {
           : 0;
       });
       
-      // Calculate average values for numeric fields
-      const numericFields = ['rdr_range', 'odr_range', 'profit', 'loss', 'drawdown'];
-      const averages = {};
-      
-      numericFields.forEach(field => {
-        const validValues = filteredData
-          .map(item => parseFloat(item[field]))
-          .filter(val => !isNaN(val));
-          
-        if (validValues.length > 0) {
-          const sum = validValues.reduce((acc, val) => acc + val, 0);
-          averages[field] = (sum / validValues.length).toFixed(2);
-        } else {
-          averages[field] = 'N/A';
-        }
-      });
-      
-      // Original win/loss rates
-      const winRate = resultPercentages['win'] || 0;
-      const lossRate = resultPercentages['loss'] || 0;
-      const breakEvenRate = resultPercentages['break_even'] || 0;
-      
-      // Set the calculated statistics with outcome probabilities
+      // Set the calculated statistics with outcome and location probabilities
       setProbabilityStats({
         totalCount,
-        winRate,
-        lossRate,
-        breakEvenRate,
         outcomeCounts,
         outcomePercentages,
-        averages,
+        locationCounts,
+        locationPercentages,
         resultCounts,
         resultPercentages
       });
@@ -315,6 +460,96 @@ filteredData.forEach(item => {
       });
     }
   };
+
+  // Function to render time distribution chart using Chart.js
+  const renderTimeDistributionChart = (canvasId, distributionData, title, color) => {
+    if (!distributionData || !document.getElementById(canvasId)) return;
+    
+    // Check if Chart.js is loaded
+    if (typeof Chart === 'undefined') {
+      console.error('Chart.js is not loaded. Please include Chart.js library.');
+      return;
+    }
+
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    
+    // Destroy previous chart if it exists
+    if (window[canvasId + 'Chart']) {
+      window[canvasId + 'Chart'].destroy();
+    }
+    
+    window[canvasId + 'Chart'] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: distributionData.labels,
+        datasets: [{
+          label: title,
+          data: distributionData.data,
+          backgroundColor: color,
+          borderColor: color.replace('0.7', '1.0'),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          title: {
+            display: true,
+            text: title,
+            font: {
+              size: 16
+            }
+          },
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Number of Occurrences'
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Time (15-minute intervals)'
+            },
+            ticks: {
+              maxRotation: 90,
+              minRotation: 90,
+              autoSkip: true,
+              maxTicksLimit: 20
+            }
+          }
+        }
+      }
+    });
+  };
+
+  // Effect to render time distribution charts when data changes
+  useEffect(() => {
+    if (firstHitTimeDistribution) {
+      renderTimeDistributionChart(
+        'firstHitTimeChart', 
+        firstHitTimeDistribution, 
+        'First Hit Time Distribution', 
+        'rgba(54, 162, 235, 0.7)'
+      );
+    }
+    
+    if (secondHitTimeDistribution) {
+      renderTimeDistributionChart(
+        'secondHitTimeChart', 
+        secondHitTimeDistribution, 
+        'Second Hit Time Distribution', 
+        'rgba(255, 99, 132, 0.7)'
+      );
+    }
+  }, [firstHitTimeDistribution, secondHitTimeDistribution]);
 
   // Handle model selection change
   const handleModelChange = (event) => {
@@ -347,6 +582,9 @@ filteredData.forEach(item => {
   return (
     <div className="p-6 max-w-4xl mx-auto bg-white rounded-lg shadow-lg">
       <h1 className="text-2xl font-bold mb-6 text-gray-800">DDR Probability Dashboard</h1>
+      
+      {/* Add Chart.js library */}
+      <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* START Model Selection */}
@@ -440,6 +678,27 @@ filteredData.forEach(item => {
         </div>
       </div>
 
+      {/* Hit Time Distribution Charts */}
+      <div className="mt-6">
+        <h2 className="font-semibold mb-4 text-gray-800 text-xl">Time Distribution Analysis</h2>
+        
+        {/* First Hit Time Distribution */}
+        <div className="bg-white p-4 rounded-lg shadow border border-gray-200 mb-6">
+          <h3 className="font-medium text-gray-700 mb-3">First Hit Time Distribution</h3>
+          <div style={{ height: "300px" }}>
+            <canvas id="firstHitTimeChart"></canvas>
+          </div>
+        </div>
+        
+        {/* Second Hit Time Distribution */}
+        <div className="bg-white p-4 rounded-lg shadow border border-gray-200 mb-6">
+          <h3 className="font-medium text-gray-700 mb-3">Second Hit Time Distribution</h3>
+          <div style={{ height: "300px" }}>
+            <canvas id="secondHitTimeChart"></canvas>
+          </div>
+        </div>
+      </div>
+
       {/* Second Hit Outcome Probability Cards */}
       {probabilityStats && probabilityStats.outcomePercentages && (
         <div className="mt-6">
@@ -512,33 +771,89 @@ filteredData.forEach(item => {
         </div>
       )}
       
-{/* Results Distribution - Keeping only this part */}
-{probabilityStats && probabilityStats.resultPercentages && (
-  <div className="mt-6">
-    <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
-      <h3 className="font-medium text-gray-700 mb-3">Results Distribution</h3>
-      <div className="space-y-3">
-        {Object.entries(probabilityStats.resultPercentages).map(([result, percentage]) => (
-          <div key={result} className="space-y-1">
-            <div className="flex justify-between text-sm">
-              <span className="capitalize text-gray-600">{result.replace(/_/g, ' ')}</span>
-              <span className="font-medium">{percentage}%</span>
+      {/* Timing Location Probabilities */}
+      {probabilityStats && probabilityStats.locationPercentages && (
+        <div className="mt-6">
+          <h2 className="font-semibold mb-4 text-gray-800 text-xl">Second Hit Location Probabilities</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* ODR Location Card */}
+            <div className="bg-gradient-to-br from-lime-50 to-lime-100 p-4 rounded-lg shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-lime-800">ODR</h3>
+                  <p className="text-3xl font-bold text-lime-600">{probabilityStats.locationPercentages['ODR']}%</p>
+                </div>
+                <div className="h-12 w-12 bg-lime-200 rounded-full flex items-center justify-center">
+                  <span className="text-lime-700 text-xl">O</span>
+                </div>
+              </div>
+              <p className="text-xs text-lime-700 mt-2">
+                {probabilityStats.locationCounts['ODR']} occurrences out of {probabilityStats.totalCount} trades
+              </p>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div 
-                className={`h-2.5 rounded-full ${
-                  result === 'win' ? 'bg-green-500' : 
-                  result === 'loss' ? 'bg-red-500' : 'bg-blue-500'
-                }`}
-                style={{ width: `${percentage}%` }}
-              ></div>
+            
+            {/* Trans Location Card */}
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-orange-800">Trans</h3>
+                  <p className="text-3xl font-bold text-orange-600">{probabilityStats.locationPercentages['Trans']}%</p>
+                </div>
+                <div className="h-12 w-12 bg-orange-200 rounded-full flex items-center justify-center">
+                  <span className="text-orange-700 text-xl">T</span>
+                </div>
+              </div>
+              <p className="text-xs text-orange-700 mt-2">
+                {probabilityStats.locationCounts['Trans']} occurrences out of {probabilityStats.totalCount} trades
+              </p>
+            </div>
+            
+            {/* RDR Location Card */}
+            <div className="bg-gradient-to-br from-violet-50 to-violet-100 p-4 rounded-lg shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-violet-800">RDR</h3>
+                  <p className="text-3xl font-bold text-violet-600">{probabilityStats.locationPercentages['RDR']}%</p>
+                </div>
+                <div className="h-12 w-12 bg-violet-200 rounded-full flex items-center justify-center">
+                  <span className="text-violet-700 text-xl">R</span>
+                </div>
+              </div>
+              <p className="text-xs text-violet-700 mt-2">
+                {probabilityStats.locationCounts['RDR']} occurrences out of {probabilityStats.totalCount} trades
+              </p>
             </div>
           </div>
-        ))}
-      </div>
-    </div>
-  </div>
-)}
+        </div>
+      )}
+      
+      {/* Results Distribution */}
+      {probabilityStats && probabilityStats.resultPercentages && (
+        <div className="mt-6">
+          <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+            <h3 className="font-medium text-gray-700 mb-3">Results Distribution</h3>
+            <div className="space-y-3">
+              {Object.entries(probabilityStats.resultPercentages).map(([result, percentage]) => (
+                <div key={result} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="capitalize text-gray-600">{result.replace(/_/g, ' ')}</span>
+                    <span className="font-medium">{percentage}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div 
+                      className={`h-2.5 rounded-full ${
+                        result === 'win' ? 'bg-green-500' : 
+                        result === 'loss' ? 'bg-red-500' : 'bg-blue-500'
+                      }`}
+                      style={{ width: `${percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Visual representation area with basic chart */}
       <div className="mt-8 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
