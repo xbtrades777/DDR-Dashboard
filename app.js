@@ -1,6 +1,23 @@
 const DDRDashboard = function() {
   // All available first parts of models only
-  var allModels = [
+  const [selectedModel, setSelectedModel] = React.useState('');
+  const [selectedHighLow, setSelectedHighLow] = React.useState('');
+  const [selectedColor, setSelectedColor] = React.useState('');
+  const [selectedPercentage, setSelectedPercentage] = React.useState('');
+  const [showPercentage, setShowPercentage] = React.useState(false);
+  const [datasetCount, setDatasetCount] = React.useState(0);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [sheetData, setSheetData] = React.useState([]);
+  const [error, setError] = React.useState(null);
+  const [probabilityStats, setProbabilityStats] = React.useState(null);
+  const [apiKey, setApiKey] = React.useState('AIzaSyBB5_LHGAX_tirA23TzDEesMJhm_Srrs9s');
+  const [spreadsheetId, setSpreadsheetId] = React.useState('1RLktcJRtgG2Hoszy8Z5Ur9OoVZP_ROxfIpAC6zRGE0Q');
+  const [sheetName, setSheetName] = React.useState('DDR Modeling Raw');
+  const [sheetRange, setSheetRange] = React.useState('DDR Modeling Raw!A1:Z1000');
+  const [showColorSelection, setShowColorSelection] = React.useState(false);
+
+  // All available first parts of models only
+  const allModels = [
     'Min',
     'MinMed',
     'MedMax',
@@ -9,7 +26,7 @@ const DDRDashboard = function() {
   ];
 
   // High/Low options
-  var highLowOptions = [
+  const highLowOptions = [
     'Low ODR',
     'High ODR',
     'Low Trans',
@@ -19,7 +36,7 @@ const DDRDashboard = function() {
   ];
 
   // Color options
-  var colorOptions = [
+  const colorOptions = [
     'MinMed Green',
     'MedMax Green',
     'Max+ Green',
@@ -29,54 +46,14 @@ const DDRDashboard = function() {
   ];
 
   // Percentage options for Min
-  var percentageOptions = [
+  const percentageOptions = [
     'Green 0 - 50%',
     'Green 50 - 100%',
     'Red 0 - 50%',
     'Red 50 - 100%'
   ];
 
-  // State for selections using useState
-  var selectedModel = useState('')[0];
-  var setSelectedModel = useState('')[1];
-  var selectedHighLow = useState('')[0];
-  var setSelectedHighLow = useState('')[1];
-  var selectedColor = useState('')[0];
-  var setSelectedColor = useState('')[1];
-  var selectedPercentage = useState('')[0];
-  var setSelectedPercentage = useState('')[1];
-  var showPercentage = useState(false)[0];
-  var setShowPercentage = useState(false)[1];
-  
-  // Dataset count
-  var datasetCount = useState(0)[0];
-  var setDatasetCount = useState(0)[1];
-
-  // State for Google Sheet data
-  var isLoading = useState(false)[0];
-  var setIsLoading = useState(false)[1];
-  var sheetData = useState([])[0];
-  var setSheetData = useState([])[1];
-  var error = useState(null)[0];
-  var setError = useState(null)[1];
-  var probabilityStats = useState(null)[0];
-  var setProbabilityStats = useState(null)[1];
-
-  // State for API connection parameters
-  var apiKey = useState('AIzaSyBB5_LHGAX_tirA23TzDEesMJhm_Srrs9s')[0];
-  var setApiKey = useState('AIzaSyBB5_LHGAX_tirA23TzDEesMJhm_Srrs9s')[1];
-  var spreadsheetId = useState('1RLktcJRtgG2Hoszy8Z5Ur9OoVZP_ROxfIpAC6zRGE0Q')[0];
-  var setSpreadsheetId = useState('1RLktcJRtgG2Hoszy8Z5Ur9OoVZP_ROxfIpAC6zRGE0Q')[1];
-  var sheetName = useState('DDR Modeling Raw')[0];
-  var setSheetName = useState('DDR Modeling Raw')[1];
-  var sheetRange = useState('DDR Modeling Raw!A1:Z1000')[0];
-  var setSheetRange = useState('DDR Modeling Raw!A1:Z1000')[1];
-
-  // Control when to show color selection
-  var showColorSelection = useState(false)[0];
-  var setShowColorSelection = useState(false)[1];
-  
-  useEffect(function() {
+  React.useEffect(() => {
     if (selectedModel === 'Min') {
       setShowPercentage(true);
       setShowColorSelection(false);
@@ -92,65 +69,39 @@ const DDRDashboard = function() {
       setSelectedColor('');
     }
   }, [selectedModel]);
-  
-  // Load data on mount if credentials available
-  useEffect(function() {
+
+  React.useEffect(() => {
     if (apiKey && spreadsheetId) {
       fetchGoogleSheetsAPI(apiKey, spreadsheetId, sheetRange);
     }
   }, [apiKey, spreadsheetId, sheetRange]);
-  
-  // Update dataset count and timing stats when selections change
-  useEffect(function() {
+
+  React.useEffect(() => {
     updateDatasetCount();
     if (sheetData.length > 0) {
-      var firstHitStats = calculateTimingStats(sheetData, 'first_hit_time');
-      var secondHitStats = calculateTimingStats(sheetData, 'second_hit_time');
-      setProbabilityStats(function(prev) {
-        if (!prev) {
-          prev = {
-            totalCount: 0,
-            winRate: 0,
-            lossRate: 0,
-            breakEvenRate: 0,
-            outcomeCounts: { 'Min': 0, 'MinMed': 0, 'MedMax': 0, 'Max+': 0 },
-            outcomePercentages: {},
-            averages: {},
-            resultCounts: {},
-            resultPercentages: {}
-          };
-        }
-        return {
-          totalCount: prev.totalCount,
-          winRate: prev.winRate,
-          lossRate: prev.lossRate,
-          breakEvenRate: prev.breakEvenRate,
-          outcomeCounts: prev.outcomeCounts,
-          outcomePercentages: prev.outcomePercentages,
-          averages: prev.averages,
-          resultCounts: prev.resultCounts,
-          resultPercentages: prev.resultPercentages,
-          firstHitStats: firstHitStats,
-          secondHitStats: secondHitStats
-        };
-      });
+      const firstHitStats = calculateTimingStats(sheetData, 'first_hit_time');
+      const secondHitStats = calculateTimingStats(sheetData, 'second_hit_time');
+      setProbabilityStats(prev => ({
+        ...prev,
+        firstHitStats,
+        secondHitStats
+      }));
     }
   }, [selectedModel, selectedHighLow, selectedColor, selectedPercentage, sheetData]);
 
-  // Function to fetch data from Google Sheets API
-  var fetchGoogleSheetsAPI = async function(apiKey, spreadsheetId, range) {
+  const fetchGoogleSheetsAPI = async (apiKey, spreadsheetId, range) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + spreadsheetId + '/values/' + range + '?key=' + apiKey;
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
       console.log('Attempting to fetch from:', url);
       
-      var response = await fetch(url);
-      var responseText = await response.text();
+      const response = await fetch(url);
+      const responseText = await response.text();
       
       try {
-        var data = JSON.parse(responseText);
+        const data = JSON.parse(responseText);
         
         if (!response.ok) {
           console.error('API Error Details:', data);
@@ -163,16 +114,16 @@ const DDRDashboard = function() {
           return;
         }
         
-        var headers = data.values[0];
-        var rows = data.values.slice(1);
+        const headers = data.values[0];
+        const rows = data.values.slice(1);
         
         console.log('Headers detected:', headers);
         console.log('Row count:', rows.length);
         
-        var processedData = rows.map(function(row) {
-          var item = {};
-          headers.forEach(function(header, index) {
-            var key = header.toLowerCase().replace(/\s+/g, '_');
+        const processedData = rows.map(row => {
+          const item = {};
+          headers.forEach((header, index) => {
+            const key = header.toLowerCase().replace(/\s+/g, '_');
             item[key] = row[index] || null;
           });
           return item;
@@ -194,8 +145,7 @@ const DDRDashboard = function() {
     }
   };
 
-  // Function to update dataset count based on selected criteria
-  var updateDatasetCount = function() {
+  const updateDatasetCount = () => {
     if (!selectedModel || sheetData.length === 0) {
       setDatasetCount(0);
       setProbabilityStats(null);
@@ -209,11 +159,11 @@ const DDRDashboard = function() {
       console.log('Sample item:', sheetData[0]);
     }
     
-    var matchingData = sheetData.filter(function(item) {
-      var modelMatch = !selectedModel || (item.model && item.model.indexOf(selectedModel + ' -') === 0);
-      var colorMatch = !selectedColor || item.outside_min_start === selectedColor;
-      var percentageMatch = !selectedPercentage || (item['color_%'] === selectedPercentage);
-      var highLowMatch = !selectedHighLow || item.first_hit_time === selectedHighLow;
+    const matchingData = sheetData.filter(item => {
+      const modelMatch = !selectedModel || (item.model && item.model.indexOf(selectedModel + ' -') === 0);
+      const colorMatch = !selectedColor || item.outside_min_start === selectedColor;
+      const percentageMatch = !selectedPercentage || (item['color_%'] === selectedPercentage);
+      const highLowMatch = !selectedHighLow || item.first_hit_time === selectedHighLow;
       
       return modelMatch && colorMatch && percentageMatch && highLowMatch;
     });
@@ -229,19 +179,18 @@ const DDRDashboard = function() {
     }
   };
 
-  // Calculate probability statistics
-  var calculateProbabilities = function(filteredData) {
-    var totalCount = filteredData.length;
+  const calculateProbabilities = (filteredData) => {
+    const totalCount = filteredData.length;
     
     try {
-      var outcomeTypes = ['Min', 'MinMed', 'MedMax', 'Max+'];
-      var outcomeCounts = { 'Min': 0, 'MinMed': 0, 'MedMax': 0, 'Max+': 0 };
+      const outcomeTypes = ['Min', 'MinMed', 'MedMax', 'Max+'];
+      const outcomeCounts = { 'Min': 0, 'MinMed': 0, 'MedMax': 0, 'Max+': 0 };
       
-      filteredData.forEach(function(item) {
+      filteredData.forEach(item => {
         if (item.model) {
-          var parts = item.model.split(' - ');
+          const parts = item.model.split(' - ');
           if (parts.length === 2) {
-            var secondHit = parts[1];
+            const secondHit = parts[1];
             if (outcomeTypes.indexOf(secondHit) !== -1) {
               outcomeCounts[secondHit]++;
             }
@@ -249,26 +198,26 @@ const DDRDashboard = function() {
         }
       });
       
-      var outcomePercentages = {};
-      outcomeTypes.forEach(function(type) {
+      const outcomePercentages = {};
+      outcomeTypes.forEach(type => {
         outcomePercentages[type] = totalCount > 0 
           ? ((outcomeCounts[type] / totalCount) * 100).toFixed(1) 
           : 0;
       });
       
-      var resultField = 'result';
-      var resultCounts = {};
-      var totalResults = 0;
+      const resultField = 'result';
+      const resultCounts = {};
+      let totalResults = 0;
       
-      filteredData.forEach(function(item) {
+      filteredData.forEach(item => {
         if (item[resultField]) {
           resultCounts[item[resultField]] = (resultCounts[item[resultField]] || 0) + 1;
           totalResults++;
         }
       });
       
-      var resultPercentages = {};
-      for (var result in resultCounts) {
+      const resultPercentages = {};
+      for (const result in resultCounts) {
         if (resultCounts.hasOwnProperty(result)) {
           resultPercentages[result] = totalResults > 0 
             ? ((resultCounts[result] / totalResults) * 100).toFixed(1) 
@@ -276,77 +225,75 @@ const DDRDashboard = function() {
         }
       }
       
-      var numericFields = ['rdr_range', 'odr_range', 'profit', 'loss', 'drawdown'];
-      var averages = {};
+      const numericFields = ['rdr_range', 'odr_range', 'profit', 'loss', 'drawdown'];
+      const averages = {};
       
-      numericFields.forEach(function(field) {
-        var validValues = filteredData
-          .map(function(item) { return parseFloat(item[field]); })
-          .filter(function(val) { return !isNaN(val); });
+      numericFields.forEach(field => {
+        const validValues = filteredData
+          .map(item => parseFloat(item[field]))
+          .filter(val => !isNaN(val));
         if (validValues.length > 0) {
-          var sum = validValues.reduce(function(acc, val) { return acc + val; }, 0);
+          const sum = validValues.reduce((acc, val) => acc + val, 0);
           averages[field] = (sum / validValues.length).toFixed(2);
         } else {
           averages[field] = 'N/A';
         }
       });
       
-      var winRate = resultPercentages['win'] || 0;
-      var lossRate = resultPercentages['loss'] || 0;
-      var breakEvenRate = resultPercentages['break_even'] || 0;
+      const winRate = resultPercentages['win'] || 0;
+      const lossRate = resultPercentages['loss'] || 0;
+      const breakEvenRate = resultPercentages['break_even'] || 0;
       
       setProbabilityStats({
-        totalCount: totalCount,
-        winRate: winRate,
-        lossRate: lossRate,
-        breakEvenRate: breakEvenRate,
-        outcomeCounts: outcomeCounts,
-        outcomePercentages: outcomePercentages,
-        averages: averages,
-        resultCounts: resultCounts,
-        resultPercentages: resultPercentages
+        totalCount,
+        winRate,
+        lossRate,
+        breakEvenRate,
+        outcomeCounts,
+        outcomePercentages,
+        averages,
+        resultCounts,
+        resultPercentages
       });
     } catch (error) {
       console.error('Error calculating probabilities:', error);
       setProbabilityStats({
-        totalCount: totalCount,
+        totalCount,
         error: error.message
       });
     }
   };
 
-  // Function to calculate timing statistics
-  var calculateTimingStats = function(data, timeField) {
-    var times = data
-      .map(function(item) {
-        var time = item[timeField];
+  const calculateTimingStats = (data, timeField) => {
+    const times = data
+      .map(item => {
+        const time = item[timeField];
         return time ? new Date('1970-01-01T' + time).getTime() : null;
       })
-      .filter(function(time) { return time !== null; })
-      .sort(function(a, b) { return a - b; });
+      .filter(time => time !== null)
+      .sort((a, b) => a - b);
 
     if (times.length === 0) return { median: null, percentile70: null, counts: {} };
 
-    var mid = Math.floor(times.length / 2);
-    var median = times.length % 2 ? times[mid] : (times[mid - 1] + times[mid]) / 2;
-    var percentile70Index = Math.floor(times.length * 0.7);
-    var percentile70 = times[percentile70Index];
+    const mid = Math.floor(times.length / 2);
+    const median = times.length % 2 ? times[mid] : (times[mid - 1] + times[mid]) / 2;
+    const percentile70Index = Math.floor(times.length * 0.7);
+    const percentile70 = times[percentile70Index];
 
-    var counts = {};
-    times.forEach(function(time) {
-      var hour = new Date(time).toTimeString().slice(0, 5); // HH:MM format
+    const counts = {};
+    times.forEach(time => {
+      const hour = new Date(time).toTimeString().slice(0, 5); // HH:MM format
       counts[hour] = (counts[hour] || 0) + 1;
     });
 
     return {
       median: new Date(median).toTimeString().slice(0, 5),
       percentile70: new Date(percentile70).toTimeString().slice(0, 5),
-      counts: counts,
+      counts
     };
   };
 
-  // Handle model selection change
-  var handleModelChange = function(event) {
+  const handleModelChange = (event) => {
     setSelectedModel(event.target.value);
     setSelectedHighLow('');
     setSelectedColor('');
@@ -354,17 +301,17 @@ const DDRDashboard = function() {
     updateDatasetCount();
   };
   
-  var handleHighLowChange = function(event) {
+  const handleHighLowChange = (event) => {
     setSelectedHighLow(event.target.value);
     updateDatasetCount();
   };
   
-  var handleColorChange = function(event) {
+  const handleColorChange = (event) => {
     setSelectedColor(event.target.value);
     updateDatasetCount();
   };
   
-  var handlePercentageChange = function(event) {
+  const handlePercentageChange = (event) => {
     setSelectedPercentage(event.target.value);
     updateDatasetCount();
   };
@@ -389,9 +336,7 @@ const DDRDashboard = function() {
             className: 'w-full p-2 border border-gray-300 rounded-md'
           },
           React.createElement('option', { value: '' }, 'Select pattern'),
-          allModels.map(function(model) {
-            return React.createElement('option', { key: model, value: model }, model);
-          })
+          allModels.map(model => React.createElement('option', { key: model, value: model }, model))
         )
       ),
       
@@ -407,9 +352,7 @@ const DDRDashboard = function() {
             className: 'w-full p-2 border border-gray-300 rounded-md'
           },
           React.createElement('option', { value: '' }, 'Select time'),
-          highLowOptions.map(function(option) {
-            return React.createElement('option', { key: option, value: option }, option);
-          })
+          highLowOptions.map(option => React.createElement('option', { key: option, value: option }, option))
         )
       ),
       
@@ -425,9 +368,7 @@ const DDRDashboard = function() {
             className: 'w-full p-2 border border-gray-300 rounded-md'
           },
           React.createElement('option', { value: '' }, 'Select color'),
-          colorOptions.map(function(color) {
-            return React.createElement('option', { key: color, value: color }, color);
-          })
+          colorOptions.map(color => React.createElement('option', { key: color, value: color }, color))
         )
       ),
       
@@ -443,9 +384,7 @@ const DDRDashboard = function() {
             className: 'w-full p-2 border border-gray-300 rounded-md'
           },
           React.createElement('option', { value: '' }, 'Select percentage'),
-          percentageOptions.map(function(percentage) {
-            return React.createElement('option', { key: percentage, value: percentage }, percentage);
-          })
+          percentageOptions.map(percentage => React.createElement('option', { key: percentage, value: percentage }, percentage))
         )
       )
     ),
@@ -578,8 +517,8 @@ const DDRDashboard = function() {
         React.createElement(
           'div',
           { className: 'space-y-3' },
-          Object.keys(probabilityStats.resultPercentages).map(function(result) {
-            return React.createElement(
+          Object.keys(probabilityStats.resultPercentages).map(result => (
+            React.createElement(
               'div',
               { key: result, className: 'space-y-1' },
               React.createElement(
@@ -599,8 +538,8 @@ const DDRDashboard = function() {
                   style: { width: probabilityStats.resultPercentages[result] + '%' }
                 })
               )
-            );
-          })
+            )
+          ))
         )
       )
     ),
@@ -616,8 +555,8 @@ const DDRDashboard = function() {
           React.createElement(
             'div',
             { className: 'h-full flex items-end space-x-8 justify-center' },
-            Object.keys(probabilityStats.outcomePercentages).map(function(outcome) {
-              return React.createElement(
+            Object.keys(probabilityStats.outcomePercentages).map(outcome => (
+              React.createElement(
                 'div',
                 { key: outcome, className: 'flex flex-col items-center justify-end h-full' },
                 React.createElement('div', {
@@ -634,8 +573,8 @@ const DDRDashboard = function() {
                   React.createElement('p', { className: 'font-medium' }, outcome),
                   React.createElement('p', { className: 'text-xl font-bold' }, probabilityStats.outcomePercentages[outcome] + '%')
                 )
-              );
-            })
+              )
+            ))
           )
         )
       ) : sheetData.length > 0 ? (
@@ -680,7 +619,7 @@ const DDRDashboard = function() {
             placeholder: 'Enter your Google API Key',
             className: 'w-full p-2 border border-gray-300 rounded-md',
             value: apiKey,
-            onChange: function(e) { setApiKey(e.target.value); }
+            onChange: e => setApiKey(e.target.value)
           })
         ),
         React.createElement(
@@ -693,7 +632,7 @@ const DDRDashboard = function() {
             placeholder: 'Enter your Spreadsheet ID',
             className: 'w-full p-2 border border-gray-300 rounded-md',
             value: spreadsheetId,
-            onChange: function(e) { setSpreadsheetId(e.target.value); }
+            onChange: e => setSpreadsheetId(e.target.value)
           }),
           React.createElement('p', { className: 'text-xs text-gray-500 mt-1' }, 'ID from your link: 1RLktcJRtgG2Hoszy8Z5Ur9OoVZP_ROxfIpAC6zRGE0Q')
         )
@@ -708,7 +647,7 @@ const DDRDashboard = function() {
           placeholder: 'e.g., DDR Modeling Raw',
           className: 'w-full p-2 border border-gray-300 rounded-md',
           value: sheetName,
-          onChange: function(e) {
+          onChange: e => {
             setSheetName(e.target.value);
             setSheetRange(e.target.value + '!A1:Z1000');
           }
@@ -725,7 +664,7 @@ const DDRDashboard = function() {
           placeholder: 'e.g., DDR Modeling Raw!A1:Z1000',
           className: 'w-full p-2 border border-gray-300 rounded-md',
           value: sheetRange,
-          onChange: function(e) { setSheetRange(e.target.value); }
+          onChange: e => setSheetRange(e.target.value)
         })
       ),
       React.createElement(
@@ -735,7 +674,7 @@ const DDRDashboard = function() {
           'button',
           {
             className: 'bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md',
-            onClick: function() { fetchGoogleSheetsAPI(apiKey, spreadsheetId, sheetRange); },
+            onClick: () => fetchGoogleSheetsAPI(apiKey, spreadsheetId, sheetRange),
             disabled: !apiKey || !spreadsheetId
           },
           'Connect'
@@ -768,17 +707,14 @@ const DDRDashboard = function() {
   );
 };
 
-// Add chart rendering after component definition
-useEffect(function() {
+React.useEffect(() => {
   if (probabilityStats && probabilityStats.firstHitStats && probabilityStats.secondHitStats) {
-    var ctx1 = document.getElementById('firstHitChart').getContext('2d');
-    var ctx2 = document.getElementById('secondHitChart').getContext('2d');
+    const ctx1 = document.getElementById('firstHitChart').getContext('2d');
+    const ctx2 = document.getElementById('secondHitChart').getContext('2d');
 
-    // Clear previous charts
     if (window.firstHitChart) window.firstHitChart.destroy();
     if (window.secondHitChart) window.secondHitChart.destroy();
 
-    // First Hit Chart
     window.firstHitChart = new Chart(ctx1, {
       type: 'bar',
       data: {
@@ -819,7 +755,6 @@ useEffect(function() {
       }
     });
 
-    // Second Hit Chart
     window.secondHitChart = new Chart(ctx2, {
       type: 'bar',
       data: {
@@ -862,9 +797,6 @@ useEffect(function() {
   }
 }, [probabilityStats]);
 
-// Need to define these for the browser environment since we're not using imports
-var React = { createElement: React.createElement, useState: React.useState, useEffect: React.useEffect };
-var ReactDOM = { render: ReactDOM.render };
-
 // Render the React component to the DOM
-ReactDOM.render(React.createElement(DDRDashboard), document.getElementById('root'));
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(DDRDashboard));
