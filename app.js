@@ -156,13 +156,29 @@ const DDRDashboard = React.createClass({
       }
     }
     
+    const numericFields = ['rdr_range', 'odr_range', 'profit', 'loss', 'drawdown'];
+    const averages = {};
+    
+    numericFields.forEach(field => {
+      const validValues = filteredData
+        .map(item => parseFloat(item[field]))
+        .filter(val => !isNaN(val));
+      if (validValues.length > 0) {
+        const sum = validValues.reduce((acc, val) => acc + val, 0);
+        averages[field] = (sum / validValues.length).toFixed(2);
+      } else {
+        averages[field] = 'N/A';
+      }
+    });
+    
     this.setState({
       probabilityStats: {
         totalCount,
         outcomeCounts,
         outcomePercentages,
         resultCounts,
-        resultPercentages
+        resultPercentages,
+        averages
       }
     });
   },
@@ -410,6 +426,46 @@ const DDRDashboard = React.createClass({
               )
             ))
           )
+        )
+      ),
+      this.state.probabilityStats && this.state.probabilityStats.averages && React.createElement(
+        'div',
+        { className: 'mt-6' },
+        React.createElement('h2', { className: 'font-semibold mb-4 text-gray-800 text-xl' }, 'Averages'),
+        React.createElement(
+          'div',
+          { className: 'grid grid-cols-1 md:grid-cols-3 gap-4' },
+          Object.keys(this.state.probabilityStats.averages).map(field => (
+            React.createElement(
+              'div',
+              { key: field, className: 'bg-gray-50 p-4 rounded-md' },
+              React.createElement('p', { className: 'text-sm font-medium text-gray-700' }, field.replace(/_/g, ' ').toUpperCase()),
+              React.createElement('p', { className: 'text-lg font-bold text-gray-800' }, this.state.probabilityStats.averages[field])
+            )
+          ))
+        )
+      ),
+      this.state.probabilityStats && this.state.probabilityStats.outcomePercentages && React.createElement(
+        'div',
+        { className: 'mt-6' },
+        React.createElement('h2', { className: 'font-semibold mb-4 text-gray-800 text-xl' }, 'Probability Visualization'),
+        React.createElement(
+          'div',
+          { className: 'h-64 flex items-end space-x-4 justify-center' },
+          Object.keys(this.state.probabilityStats.outcomePercentages).map(outcome => (
+            React.createElement(
+              'div',
+              { key: outcome, className: 'flex flex-col items-center' },
+              React.createElement('div', {
+                className: 'w-20 rounded-t-lg shadow-inner',
+                style: {
+                  height: this.state.probabilityStats.outcomePercentages[outcome] + 'px',
+                  backgroundColor: outcome === 'Min' ? '#9B59B6' : outcome === 'MinMed' ? '#3498DB' : outcome === 'MedMax' ? '#1ABC9C' : '#F1C40F'
+                }
+              }),
+              React.createElement('p', { className: 'mt-2 text-center' }, outcome + ': ' + this.state.probabilityStats.outcomePercentages[outcome] + '%')
+            )
+          ))
         )
       ),
       React.createElement(
