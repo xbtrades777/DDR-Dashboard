@@ -1,180 +1,135 @@
-const DDRDashboard = () => {
-  const [selectedModel, setSelectedModel] = React.useState('');
-  const [selectedHighLow, setSelectedHighLow] = React.useState('');
-  const [selectedColor, setSelectedColor] = React.useState('');
-  const [selectedPercentage, setSelectedPercentage] = React.useState('');
-  const [showPercentage, setShowPercentage] = React.useState(false);
-  const [datasetCount, setDatasetCount] = React.useState(0);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [sheetData, setSheetData] = React.useState([]);
-  const [error, setError] = React.useState(null);
-  const [probabilityStats, setProbabilityStats] = React.useState(null);
-  const [apiKey, setApiKey] = React.useState('AIzaSyBB5_LHGAX_tirA23TzDEesMJhm_Srrs9s');
-  const [spreadsheetId, setSpreadsheetId] = React.useState('1RLktcJRtgG2Hoszy8Z5Ur9OoVZP_ROxfIpAC6zRGE0Q');
-  const [sheetName, setSheetName] = React.useState('DDR Modeling Raw');
-  const [sheetRange, setSheetRange] = React.useState('DDR Modeling Raw!A1:Z1000');
-  const [showColorSelection, setShowColorSelection] = React.useState(false);
+const DDRDashboard = React.createClass({
+  getInitialState() {
+    return {
+      selectedModel: '',
+      selectedHighLow: '',
+      selectedColor: '',
+      selectedPercentage: '',
+      showPercentage: false,
+      datasetCount: 0,
+      isLoading: false,
+      sheetData: [],
+      error: null,
+      probabilityStats: null,
+      apiKey: 'AIzaSyBB5_LHGAX_tirA23TzDEesMJhm_Srrs9s',
+      spreadsheetId: '1RLktcJRtgG2Hoszy8Z5Ur9OoVZP_ROxfIpAC6zRGE0Q',
+      sheetName: 'DDR Modeling Raw',
+      sheetRange: 'DDR Modeling Raw!A1:Z1000',
+      showColorSelection: false
+    };
+  },
 
-  const allModels = [
-    'Min',
-    'MinMed',
-    'MedMax',
-    'Max+',
-    ''  // Blank option
-  ];
-
-  const highLowOptions = [
-    'Low ODR',
-    'High ODR',
-    'Low Trans',
-    'High Trans',
-    'Low RDR',
-    'High RDR'
-  ];
-
-  const colorOptions = [
-    'MinMed Green',
-    'MedMax Green',
-    'Max+ Green',
-    'MinMed Red',
-    'MedMax Red',
-    'Max+ Red'
-  ];
-
-  const percentageOptions = [
-    'Green 0 - 50%',
-    'Green 50 - 100%',
-    'Red 0 - 50%',
-    'Red 50 - 100%'
-  ];
-
-  React.useEffect(() => {
-    if (selectedModel === 'Min') {
-      setShowPercentage(true);
-      setShowColorSelection(false);
-      setSelectedColor('');
-    } else if (selectedModel) {
-      setShowPercentage(false);
-      setShowColorSelection(true);
-      setSelectedPercentage('');
-    } else {
-      setShowPercentage(false);
-      setShowColorSelection(false);
-      setSelectedPercentage('');
-      setSelectedColor('');
+  componentDidMount() {
+    // Simulate useEffect for initial API fetch
+    if (this.state.apiKey && this.state.spreadsheetId) {
+      this.fetchGoogleSheetsAPI(this.state.apiKey, this.state.spreadsheetId, this.state.sheetRange);
     }
-  }, [selectedModel]);
+  },
 
-  React.useEffect(() => {
-    if (apiKey && spreadsheetId) {
-      fetchGoogleSheetsAPI(apiKey, spreadsheetId, sheetRange);
-    }
-  }, [apiKey, spreadsheetId, sheetRange]);
-
-  React.useEffect(() => {
-    updateDatasetCount();
-    if (sheetData.length > 0) {
-      const firstHitStats = calculateTimingStats(sheetData, 'first_hit_time');
-      const secondHitStats = calculateTimingStats(sheetData, 'second_hit_time');
-      setProbabilityStats(prev => ({
-        ...prev,
-        firstHitStats,
-        secondHitStats
-      }));
-    }
-  }, [selectedModel, selectedHighLow, selectedColor, selectedPercentage, sheetData]);
-
-  const fetchGoogleSheetsAPI = async (apiKey, spreadsheetId, range) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
-      console.log('Attempting to fetch from:', url);
-      
-      const response = await fetch(url);
-      const responseText = await response.text();
-      
-      try {
-        const data = JSON.parse(responseText);
-        
-        if (!response.ok) {
-          console.error('API Error Details:', data);
-          throw new Error('API error: ' + (data.error && data.error.message ? data.error.message : 'Unknown error'));
-        }
-        
-        if (!data.values || data.values.length === 0) {
-          setError('No data found in the specified range');
-          setIsLoading(false);
-          return;
-        }
-        
-        const headers = data.values[0];
-        const rows = data.values.slice(1);
-        
-        console.log('Headers detected:', headers);
-        console.log('Row count:', rows.length);
-        
-        const processedData = rows.map(row => {
-          const item = {};
-          headers.forEach((header, index) => {
-            const key = header.toLowerCase().replace(/\s+/g, '_');
-            item[key] = row[index] || null;
-          });
-          return item;
-        });
-        
-        console.log('Sample processed data:', processedData.slice(0, 2));
-        
-        setSheetData(processedData);
-        setIsLoading(false);
-        updateDatasetCount();
-      } catch (jsonError) {
-        console.error('Response is not valid JSON:', responseText);
-        throw new Error('Invalid API response: ' + responseText.substring(0, 100) + '...');
+  componentDidUpdate(prevProps, prevState) {
+    // Simulate useEffect for selectedModel changes
+    if (prevState.selectedModel !== this.state.selectedModel) {
+      if (this.state.selectedModel === 'Min') {
+        this.setState({ showPercentage: true, showColorSelection: false, selectedColor: '' });
+      } else if (this.state.selectedModel) {
+        this.setState({ showPercentage: false, showColorSelection: true, selectedPercentage: '' });
+      } else {
+        this.setState({ showPercentage: false, showColorSelection: false, selectedPercentage: '', selectedColor: '' });
       }
-    } catch (error) {
-      console.error('Fetch error:', error);
-      setError('Error fetching data: ' + error.message);
-      setIsLoading(false);
     }
-  };
 
-  const updateDatasetCount = () => {
-    if (!selectedModel || sheetData.length === 0) {
-      setDatasetCount(0);
-      setProbabilityStats(null);
+    // Simulate useEffect for updating dataset count
+    if (
+      prevState.selectedModel !== this.state.selectedModel ||
+      prevState.selectedHighLow !== this.state.selectedHighLow ||
+      prevState.selectedColor !== this.state.selectedColor ||
+      prevState.selectedPercentage !== this.state.selectedPercentage ||
+      prevState.sheetData !== this.state.sheetData
+    ) {
+      this.updateDatasetCount();
+    }
+  },
+
+  fetchGoogleSheetsAPI(apiKey, spreadsheetId, range) {
+    this.setState({ isLoading: true, error: null });
+    
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
+    console.log('Attempting to fetch from:', url);
+    
+    fetch(url)
+      .then(response => response.text())
+      .then(responseText => {
+        try {
+          const data = JSON.parse(responseText);
+          
+          if (!data.values || data.values.length === 0) {
+            this.setState({ error: 'No data found in the specified range', isLoading: false });
+            return;
+          }
+          
+          const headers = data.values[0];
+          const rows = data.values.slice(1);
+          
+          console.log('Headers detected:', headers);
+          console.log('Row count:', rows.length);
+          
+          const processedData = rows.map(row => {
+            const item = {};
+            headers.forEach((header, index) => {
+              const key = header.toLowerCase().replace(/\s+/g, '_');
+              item[key] = row[index] || null;
+            });
+            return item;
+          });
+          
+          console.log('Sample processed data:', processedData.slice(0, 2));
+          
+          this.setState({ sheetData: processedData, isLoading: false }, this.updateDatasetCount);
+        } catch (jsonError) {
+          console.error('Response is not valid JSON:', responseText);
+          this.setState({ error: 'Invalid API response: ' + responseText.substring(0, 100) + '...', isLoading: false });
+        }
+      })
+      .catch(error => {
+        console.error('Fetch error:', error);
+        this.setState({ error: 'Error fetching data: ' + error.message, isLoading: false });
+      });
+  },
+
+  updateDatasetCount() {
+    if (!this.state.selectedModel || this.state.sheetData.length === 0) {
+      this.setState({ datasetCount: 0, probabilityStats: null });
       return;
     }
     
-    console.log('Filtering with first hit:', selectedModel);
-    console.log('Selected percentage:', selectedPercentage);
+    console.log('Filtering with first hit:', this.state.selectedModel);
+    console.log('Selected percentage:', this.state.selectedPercentage);
     
-    if (sheetData.length > 0) {
-      console.log('Sample item:', sheetData[0]);
+    if (this.state.sheetData.length > 0) {
+      console.log('Sample item:', this.state.sheetData[0]);
     }
     
-    const matchingData = sheetData.filter(item => {
-      const modelMatch = !selectedModel || (item.model && item.model.indexOf(selectedModel + ' -') === 0);
-      const colorMatch = !selectedColor || item.outside_min_start === selectedColor;
-      const percentageMatch = !selectedPercentage || (item['color_%'] === selectedPercentage);
-      const highLowMatch = !selectedHighLow || item.first_hit_time === selectedHighLow;
+    const matchingData = this.state.sheetData.filter(item => {
+      const modelMatch = !this.state.selectedModel || (item.model && item.model.indexOf(this.state.selectedModel + ' -') === 0);
+      const colorMatch = !this.state.selectedColor || item.outside_min_start === this.state.selectedColor;
+      const percentageMatch = !this.state.selectedPercentage || (item['color_%'] === this.state.selectedPercentage);
+      const highLowMatch = !this.state.selectedHighLow || item.first_hit_time === this.state.selectedHighLow;
       
       return modelMatch && colorMatch && percentageMatch && highLowMatch;
     });
     
     console.log('Found matching datasets:', matchingData.length);
     
-    setDatasetCount(matchingData.length);
+    this.setState({ datasetCount: matchingData.length });
     
     if (matchingData.length > 0) {
-      calculateProbabilities(matchingData);
+      this.calculateProbabilities(matchingData);
     } else {
-      setProbabilityStats(null);
+      this.setState({ probabilityStats: null });
     }
-  };
+  },
 
-  const calculateProbabilities = (filteredData) => {
+  calculateProbabilities(filteredData) {
     const totalCount = filteredData.length;
     
     try {
@@ -239,558 +194,453 @@ const DDRDashboard = () => {
       const lossRate = resultPercentages['loss'] || 0;
       const breakEvenRate = resultPercentages['break_even'] || 0;
       
-      setProbabilityStats({
-        totalCount,
-        winRate,
-        lossRate,
-        breakEvenRate,
-        outcomeCounts,
-        outcomePercentages,
-        averages,
-        resultCounts,
-        resultPercentages
+      this.setState({
+        probabilityStats: {
+          totalCount,
+          winRate,
+          lossRate,
+          breakEvenRate,
+          outcomeCounts,
+          outcomePercentages,
+          averages,
+          resultCounts,
+          resultPercentages
+        }
       });
     } catch (error) {
       console.error('Error calculating probabilities:', error);
-      setProbabilityStats({
-        totalCount,
-        error: error.message
+      this.setState({
+        probabilityStats: {
+          totalCount,
+          error: error.message
+        }
       });
     }
-  };
+  },
 
-  const calculateTimingStats = (data, timeField) => {
-    const times = data
-      .map(item => {
-        const time = item[timeField];
-        return time ? new Date('1970-01-01T' + time).getTime() : null;
-      })
-      .filter(time => time !== null)
-      .sort((a, b) => a - b);
+  handleModelChange(event) {
+    this.setState({
+      selectedModel: event.target.value,
+      selectedHighLow: '',
+      selectedColor: '',
+      selectedPercentage: ''
+    }, this.updateDatasetCount);
+  },
 
-    if (times.length === 0) return { median: null, percentile70: null, counts: {} };
+  handleHighLowChange(event) {
+    this.setState({ selectedHighLow: event.target.value }, this.updateDatasetCount);
+  },
 
-    const mid = Math.floor(times.length / 2);
-    const median = times.length % 2 ? times[mid] : (times[mid - 1] + times[mid]) / 2;
-    const percentile70Index = Math.floor(times.length * 0.7);
-    const percentile70 = times[percentile70Index];
+  handleColorChange(event) {
+    this.setState({ selectedColor: event.target.value }, this.updateDatasetCount);
+  },
 
-    const counts = {};
-    times.forEach(time => {
-      const hour = new Date(time).toTimeString().slice(0, 5); // HH:MM format
-      counts[hour] = (counts[hour] || 0) + 1;
-    });
+  handlePercentageChange(event) {
+    this.setState({ selectedPercentage: event.target.value }, this.updateDatasetCount);
+  },
 
-    return {
-      median: new Date(median).toTimeString().slice(0, 5),
-      percentile70: new Date(percentile70).toTimeString().slice(0, 5),
-      counts
-    };
-  };
+  render() {
+    const allModels = [
+      'Min',
+      'MinMed',
+      'MedMax',
+      'Max+',
+      ''
+    ];
 
-  const handleModelChange = (event) => {
-    setSelectedModel(event.target.value);
-    setSelectedHighLow('');
-    setSelectedColor('');
-    setSelectedPercentage('');
-    updateDatasetCount();
-  };
-  
-  const handleHighLowChange = (event) => {
-    setSelectedHighLow(event.target.value);
-    updateDatasetCount();
-  };
-  
-  const handleColorChange = (event) => {
-    setSelectedColor(event.target.value);
-    updateDatasetCount();
-  };
-  
-  const handlePercentageChange = (event) => {
-    setSelectedPercentage(event.target.value);
-    updateDatasetCount();
-  };
+    const highLowOptions = [
+      'Low ODR',
+      'High ODR',
+      'Low Trans',
+      'High Trans',
+      'Low RDR',
+      'High RDR'
+    ];
 
-  return React.createElement(
-    'div',
-    { className: 'p-6 max-w-4xl mx-auto bg-white rounded-lg shadow-lg' },
-    React.createElement('h1', { className: 'text-2xl font-bold mb-6 text-gray-800' }, 'DDR Probability Dashboard'),
-    
-    React.createElement(
+    const colorOptions = [
+      'MinMed Green',
+      'MedMax Green',
+      'Max+ Green',
+      'MinMed Red',
+      'MedMax Red',
+      'Max+ Red'
+    ];
+
+    const percentageOptions = [
+      'Green 0 - 50%',
+      'Green 50 - 100%',
+      'Red 0 - 50%',
+      'Red 50 - 100%'
+    ];
+
+    return React.createElement(
       'div',
-      { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6' },
+      { className: 'p-6 max-w-4xl mx-auto bg-white rounded-lg shadow-lg' },
+      React.createElement('h1', { className: 'text-2xl font-bold mb-6 text-gray-800' }, 'DDR Probability Dashboard'),
+      
       React.createElement(
         'div',
-        { className: 'bg-gray-50 p-4 rounded-md' },
-        React.createElement('h2', { className: 'font-semibold mb-2 text-gray-700' }, 'First Hit Pattern'),
+        { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6' },
         React.createElement(
-          'select',
-          {
-            value: selectedModel,
-            onChange: handleModelChange,
-            className: 'w-full p-2 border border-gray-300 rounded-md'
-          },
-          React.createElement('option', { value: '' }, 'Select pattern'),
-          allModels.map(model => React.createElement('option', { key: model, value: model }, model))
+          'div',
+          { className: 'bg-gray-50 p-4 rounded-md' },
+          React.createElement('h2', { className: 'font-semibold mb-2 text-gray-700' }, 'First Hit Pattern'),
+          React.createElement(
+            'select',
+            {
+              value: this.state.selectedModel,
+              onChange: this.handleModelChange.bind(this),
+              className: 'w-full p-2 border border-gray-300 rounded-md'
+            },
+            React.createElement('option', { value: '' }, 'Select pattern'),
+            allModels.map(model => React.createElement('option', { key: model, value: model }, model))
+          )
+        ),
+        
+        this.state.selectedModel && React.createElement(
+          'div',
+          { className: 'bg-gray-50 p-4 rounded-md' },
+          React.createElement('h2', { className: 'font-semibold mb-2 text-gray-700' }, 'First Hit Time'),
+          React.createElement(
+            'select',
+            {
+              value: this.state.selectedHighLow,
+              onChange: this.handleHighLowChange.bind(this),
+              className: 'w-full p-2 border border-gray-300 rounded-md'
+            },
+            React.createElement('option', { value: '' }, 'Select time'),
+            highLowOptions.map(option => React.createElement('option', { key: option, value: option }, option))
+          )
+        ),
+        
+        this.state.showColorSelection && React.createElement(
+          'div',
+          { className: 'bg-gray-50 p-4 rounded-md' },
+          React.createElement('h2', { className: 'font-semibold mb-2 text-gray-700' }, 'Color'),
+          React.createElement(
+            'select',
+            {
+              value: this.state.selectedColor,
+              onChange: this.handleColorChange.bind(this),
+              className: 'w-full p-2 border border-gray-300 rounded-md'
+            },
+            React.createElement('option', { value: '' }, 'Select color'),
+            colorOptions.map(color => React.createElement('option', { key: color, value: color }, color))
+          )
+        ),
+        
+        this.state.showPercentage && React.createElement(
+          'div',
+          { className: 'bg-gray-50 p-4 rounded-md' },
+          React.createElement('h2', { className: 'font-semibold mb-2 text-gray-700' }, '% Color'),
+          React.createElement(
+            'select',
+            {
+              value: this.state.selectedPercentage,
+              onChange: this.handlePercentageChange.bind(this),
+              className: 'w-full p-2 border border-gray-300 rounded-md'
+            },
+            React.createElement('option', { value: '' }, 'Select percentage'),
+            percentageOptions.map(percentage => React.createElement('option', { key: percentage, value: percentage }, percentage))
+          )
         )
       ),
       
-      selectedModel && React.createElement(
+      this.state.isLoading && React.createElement(
         'div',
-        { className: 'bg-gray-50 p-4 rounded-md' },
-        React.createElement('h2', { className: 'font-semibold mb-2 text-gray-700' }, 'First Hit Time'),
-        React.createElement(
-          'select',
-          {
-            value: selectedHighLow,
-            onChange: handleHighLowChange,
-            className: 'w-full p-2 border border-gray-300 rounded-md'
-          },
-          React.createElement('option', { value: '' }, 'Select time'),
-          highLowOptions.map(option => React.createElement('option', { key: option, value: option }, option))
-        )
+        { className: 'mt-6 p-4 bg-yellow-50 rounded-md text-center' },
+        React.createElement('p', { className: 'text-yellow-600' }, 'Loading data from Google Sheet...')
       ),
       
-      showColorSelection && React.createElement(
+      this.state.error && React.createElement(
         'div',
-        { className: 'bg-gray-50 p-4 rounded-md' },
-        React.createElement('h2', { className: 'font-semibold mb-2 text-gray-700' }, 'Color'),
-        React.createElement(
-          'select',
-          {
-            value: selectedColor,
-            onChange: handleColorChange,
-            className: 'w-full p-2 border border-gray-300 rounded-md'
-          },
-          React.createElement('option', { value: '' }, 'Select color'),
-          colorOptions.map(color => React.createElement('option', { key: color, value: color }, color))
-        )
+        { className: 'mt-6 p-4 bg-red-50 rounded-md text-center' },
+        React.createElement('p', { className: 'text-red-600' }, 'Error: ' + this.state.error)
       ),
       
-      showPercentage && React.createElement(
-        'div',
-        { className: 'bg-gray-50 p-4 rounded-md' },
-        React.createElement('h2', { className: 'font-semibold mb-2 text-gray-700' }, '% Color'),
-        React.createElement(
-          'select',
-          {
-            value: selectedPercentage,
-            onChange: handlePercentageChange,
-            className: 'w-full p-2 border border-gray-300 rounded-md'
-          },
-          React.createElement('option', { value: '' }, 'Select percentage'),
-          percentageOptions.map(percentage => React.createElement('option', { key: percentage, value: percentage }, percentage))
-        )
-      )
-    ),
-    
-    isLoading && React.createElement(
-      'div',
-      { className: 'mt-6 p-4 bg-yellow-50 rounded-md text-center' },
-      React.createElement('p', { className: 'text-yellow-600' }, 'Loading data from Google Sheet...')
-    ),
-    
-    error && React.createElement(
-      'div',
-      { className: 'mt-6 p-4 bg-red-50 rounded-md text-center' },
-      React.createElement('p', { className: 'text-red-600' }, 'Error: ' + error)
-    ),
-    
-    React.createElement(
-      'div',
-      { className: 'mt-6 bg-blue-100 p-4 rounded-lg shadow-sm' },
       React.createElement(
         'div',
-        { className: 'flex items-center justify-between' },
-        React.createElement('h2', { className: 'font-semibold text-gray-800' }, 'Matching Datasets'),
+        { className: 'mt-6 bg-blue-100 p-4 rounded-lg shadow-sm' },
         React.createElement(
           'div',
-          { className: 'flex items-center bg-white px-4 py-2 rounded-full shadow' },
-          React.createElement('span', { className: 'text-2xl font-bold text-blue-600 mr-2' }, datasetCount),
-          React.createElement('span', { className: 'text-gray-500 text-sm' }, 'records')
+          { className: 'flex items-center justify-between' },
+          React.createElement('h2', { className: 'font-semibold text-gray-800' }, 'Matching Datasets'),
+          React.createElement(
+            'div',
+            { className: 'flex items-center bg-white px-4 py-2 rounded-full shadow' },
+            React.createElement('span', { className: 'text-2xl font-bold text-blue-600 mr-2' }, this.state.datasetCount),
+            React.createElement('span', { className: 'text-gray-500 text-sm' }, 'records')
+          )
         )
-      )
-    ),
+      ),
 
-    probabilityStats && probabilityStats.outcomePercentages && React.createElement(
-      'div',
-      { className: 'mt-6' },
-      React.createElement('h2', { className: 'font-semibold mb-4 text-gray-800 text-xl' }, 'Second Hit Probabilities'),
-      React.createElement(
+      this.state.probabilityStats && this.state.probabilityStats.outcomePercentages && React.createElement(
         'div',
-        { className: 'grid grid-cols-1 md:grid-cols-4 gap-4 mb-6' },
+        { className: 'mt-6' },
+        React.createElement('h2', { className: 'font-semibold mb-4 text-gray-800 text-xl' }, 'Second Hit Probabilities'),
         React.createElement(
           'div',
-          { className: 'bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg shadow' },
+          { className: 'grid grid-cols-1 md:grid-cols-4 gap-4 mb-6' },
           React.createElement(
             'div',
-            { className: 'flex items-center justify-between' },
+            { className: 'bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg shadow' },
             React.createElement(
               'div',
-              null,
-              React.createElement('h3', { className: 'text-sm font-medium text-purple-800' }, 'Min'),
-              React.createElement('p', { className: 'text-3xl font-bold text-purple-600' }, probabilityStats.outcomePercentages['Min'] + '%')
-            ),
-            React.createElement(
-              'div',
-              { className: 'h-12 w-12 bg-purple-200 rounded-full flex items-center justify-center' },
-              React.createElement('span', { className: 'text-purple-700 text-xl' }, 'M')
-            )
-          ),
-          React.createElement('p', { className: 'text-xs text-purple-700 mt-2' }, probabilityStats.outcomeCounts['Min'] + ' occurrences out of ' + probabilityStats.totalCount + ' trades')
-        ),
-        React.createElement(
-          'div',
-          { className: 'bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg shadow' },
-          React.createElement(
-            'div',
-            { className: 'flex items-center justify-between' },
-            React.createElement(
-              'div',
-              null,
-              React.createElement('h3', { className: 'text-sm font-medium text-indigo-800' }, 'MinMed'),
-              React.createElement('p', { className: 'text-3xl font-bold text-indigo-600' }, probabilityStats.outcomePercentages['MinMed'] + '%')
-            ),
-            React.createElement(
-              'div',
-              { className: 'h-12 w-12 bg-indigo-200 rounded-full flex items-center justify-center' },
-              React.createElement('span', { className: 'text-indigo-700 text-xl' }, 'MM')
-            )
-          ),
-          React.createElement('p', { className: 'text-xs text-indigo-700 mt-2' }, probabilityStats.outcomeCounts['MinMed'] + ' occurrences out of ' + probabilityStats.totalCount + ' trades')
-        ),
-        React.createElement(
-          'div',
-          { className: 'bg-gradient-to-br from-cyan-50 to-cyan-100 p-4 rounded-lg shadow' },
-          React.createElement(
-            'div',
-            { className: 'flex items-center justify-between' },
-            React.createElement(
-              'div',
-              null,
-              React.createElement('h3', { className: 'text-sm font-medium text-cyan-800' }, 'MedMax'),
-              React.createElement('p', { className: 'text-3xl font-bold text-cyan-600' }, probabilityStats.outcomePercentages['MedMax'] + '%')
-            ),
-            React.createElement(
-              'div',
-              { className: 'h-12 w-12 bg-cyan-200 rounded-full flex items-center justify-center' },
-              React.createElement('span', { className: 'text-cyan-700 text-xl' }, 'MX')
-            )
-          ),
-          React.createElement('p', { className: 'text-xs text-cyan-700 mt-2' }, probabilityStats.outcomeCounts['MedMax'] + ' occurrences out of ' + probabilityStats.totalCount + ' trades')
-        ),
-        React.createElement(
-          'div',
-          { className: 'bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg shadow' },
-          React.createElement(
-            'div',
-            { className: 'flex items-center justify-between' },
-            React.createElement(
-              'div',
-              null,
-              React.createElement('h3', { className: 'text-sm font-medium text-amber-800' }, 'Max+'),
-              React.createElement('p', { className: 'text-3xl font-bold text-amber-600' }, probabilityStats.outcomePercentages['Max+'] + '%')
-            ),
-            React.createElement(
-              'div',
-              { className: 'h-12 w-12 bg-amber-200 rounded-full flex items-center justify-center' },
-              React.createElement('span', { className: 'text-amber-700 text-xl' }, 'M+')
-            )
-          ),
-          React.createElement('p', { className: 'text-xs text-amber-700 mt-2' }, probabilityStats.outcomeCounts['Max+'] + ' occurrences out of ' + probabilityStats.totalCount + ' trades')
-        )
-      )
-    ),
-    
-    probabilityStats && probabilityStats.resultPercentages && React.createElement(
-      'div',
-      { className: 'mt-6' },
-      React.createElement(
-        'div',
-        { className: 'bg-white p-4 rounded-lg shadow border border-gray-200' },
-        React.createElement('h3', { className: 'font-medium text-gray-700 mb-3' }, 'Results Distribution'),
-        React.createElement(
-          'div',
-          { className: 'space-y-3' },
-          Object.keys(probabilityStats.resultPercentages).map(result => (
-            React.createElement(
-              'div',
-              { key: result, className: 'space-y-1' },
+              { className: 'flex items-center justify-between' },
               React.createElement(
                 'div',
-                { className: 'flex justify-between text-sm' },
-                React.createElement('span', { className: 'capitalize text-gray-600' }, result.replace(/_/g, ' ')),
-                React.createElement('span', { className: 'font-medium' }, probabilityStats.resultPercentages[result] + '%')
+                null,
+                React.createElement('h3', { className: 'text-sm font-medium text-purple-800' }, 'Min'),
+                React.createElement('p', { className: 'text-3xl font-bold text-purple-600' }, this.state.probabilityStats.outcomePercentages['Min'] + '%')
               ),
               React.createElement(
                 'div',
-                { className: 'w-full bg-gray-200 rounded-full h-2.5' },
-                React.createElement('div', {
-                  className: 'h-2.5 rounded-full ' + (
-                    result === 'win' ? 'bg-green-500' : 
-                    result === 'loss' ? 'bg-red-500' : 'bg-blue-500'
-                  ),
-                  style: { width: probabilityStats.resultPercentages[result] + '%' }
-                })
+                { className: 'h-12 w-12 bg-purple-200 rounded-full flex items-center justify-center' },
+                React.createElement('span', { className: 'text-purple-700 text-xl' }, 'M')
               )
-            )
-          ))
-        )
-      )
-    ),
-    
-    React.createElement(
-      'div',
-      { className: 'mt-8 p-6 bg-white rounded-lg border border-gray-200 shadow-sm' },
-      React.createElement('h2', { className: 'font-semibold mb-6 text-gray-800 text-xl' }, 'Visual Representation'),
-      selectedModel && probabilityStats && probabilityStats.outcomePercentages ? (
-        React.createElement(
-          'div',
-          { className: 'h-64' },
+            ),
+            React.createElement('p', { className: 'text-xs text-purple-700 mt-2' }, this.state.probabilityStats.outcomeCounts['Min'] + ' occurrences out of ' + this.state.probabilityStats.totalCount + ' trades')
+          ),
           React.createElement(
             'div',
-            { className: 'h-full flex items-end space-x-8 justify-center' },
-            Object.keys(probabilityStats.outcomePercentages).map(outcome => (
+            { className: 'bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg shadow' },
+            React.createElement(
+              'div',
+              { className: 'flex items-center justify-between' },
               React.createElement(
                 'div',
-                { key: outcome, className: 'flex flex-col items-center justify-end h-full' },
-                React.createElement('div', {
-                  className: 'w-24 ' + (
-                    outcome === 'Min' ? 'bg-purple-500' : 
-                    outcome === 'MinMed' ? 'bg-indigo-500' : 
-                    outcome === 'MedMax' ? 'bg-cyan-500' : 'bg-amber-500'
-                  ) + ' rounded-t-lg shadow-inner transition-all duration-500 ease-in-out',
-                  style: { height: probabilityStats.outcomePercentages[outcome] + '%' }
-                }),
+                null,
+                React.createElement('h3', { className: 'text-sm font-medium text-indigo-800' }, 'MinMed'),
+                React.createElement('p', { className: 'text-3xl font-bold text-indigo-600' }, this.state.probabilityStats.outcomePercentages['MinMed'] + '%')
+              ),
+              React.createElement(
+                'div',
+                { className: 'h-12 w-12 bg-indigo-200 rounded-full flex items-center justify-center' },
+                React.createElement('span', { className: 'text-indigo-700 text-xl' }, 'MM')
+              )
+            ),
+            React.createElement('p', { className: 'text-xs text-indigo-700 mt-2' }, this.state.probabilityStats.outcomeCounts['MinMed'] + ' occurrences out of ' + this.state.probabilityStats.totalCount + ' trades')
+          ),
+          React.createElement(
+            'div',
+            { className: 'bg-gradient-to-br from-cyan-50 to-cyan-100 p-4 rounded-lg shadow' },
+            React.createElement(
+              'div',
+              { className: 'flex items-center justify-between' },
+              React.createElement(
+                'div',
+                null,
+                React.createElement('h3', { className: 'text-sm font-medium text-cyan-800' }, 'MedMax'),
+                React.createElement('p', { className: 'text-3xl font-bold text-cyan-600' }, this.state.probabilityStats.outcomePercentages['MedMax'] + '%')
+              ),
+              React.createElement(
+                'div',
+                { className: 'h-12 w-12 bg-cyan-200 rounded-full flex items-center justify-center' },
+                React.createElement('span', { className: 'text-cyan-700 text-xl' }, 'MX')
+              )
+            ),
+            React.createElement('p', { className: 'text-xs text-cyan-700 mt-2' }, this.state.probabilityStats.outcomeCounts['MedMax'] + ' occurrences out of ' + this.state.probabilityStats.totalCount + ' trades')
+          ),
+          React.createElement(
+            'div',
+            { className: 'bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg shadow' },
+            React.createElement(
+              'div',
+              { className: 'flex items-center justify-between' },
+              React.createElement(
+                'div',
+                null,
+                React.createElement('h3', { className: 'text-sm font-medium text-amber-800' }, 'Max+'),
+                React.createElement('p', { className: 'text-3xl font-bold text-amber-600' }, this.state.probabilityStats.outcomePercentages['Max+'] + '%')
+              ),
+              React.createElement(
+                'div',
+                { className: 'h-12 w-12 bg-amber-200 rounded-full flex items-center justify-center' },
+                React.createElement('span', { className: 'text-amber-700 text-xl' }, 'M+')
+              )
+            ),
+            React.createElement('p', { className: 'text-xs text-amber-700 mt-2' }, this.state.probabilityStats.outcomeCounts['Max+'] + ' occurrences out of ' + this.state.probabilityStats.totalCount + ' trades')
+          )
+        )
+      ),
+      
+      this.state.probabilityStats && this.state.probabilityStats.resultPercentages && React.createElement(
+        'div',
+        { className: 'mt-6' },
+        React.createElement(
+          'div',
+          { className: 'bg-white p-4 rounded-lg shadow border border-gray-200' },
+          React.createElement('h3', { className: 'font-medium text-gray-700 mb-3' }, 'Results Distribution'),
+          React.createElement(
+            'div',
+            { className: 'space-y-3' },
+            Object.keys(this.state.probabilityStats.resultPercentages).map(result => (
+              React.createElement(
+                'div',
+                { key: result, className: 'space-y-1' },
                 React.createElement(
                   'div',
-                  { className: 'mt-2 text-center' },
-                  React.createElement('p', { className: 'font-medium' }, outcome),
-                  React.createElement('p', { className: 'text-xl font-bold' }, probabilityStats.outcomePercentages[outcome] + '%')
+                  { className: 'flex justify-between text-sm' },
+                  React.createElement('span', { className: 'capitalize text-gray-600' }, result.replace(/_/g, ' ')),
+                  React.createElement('span', { className: 'font-medium' }, this.state.probabilityStats.resultPercentages[result] + '%')
+                ),
+                React.createElement(
+                  'div',
+                  { className: 'w-full bg-gray-200 rounded-full h-2.5' },
+                  React.createElement('div', {
+                    className: 'h-2.5 rounded-full ' + (
+                      result === 'win' ? 'bg-green-500' : 
+                      result === 'loss' ? 'bg-red-500' : 'bg-blue-500'
+                    ),
+                    style: { width: this.state.probabilityStats.resultPercentages[result] + '%' }
+                  })
                 )
               )
             ))
           )
         )
-      ) : sheetData.length > 0 ? (
-        React.createElement(
-          'div',
-          { className: 'h-64 flex items-center justify-center' },
-          React.createElement('p', { className: 'text-gray-500' }, 'Select a first hit pattern and time to see probability visualization')
-        )
-      ) : (
-        React.createElement(
-          'div',
-          { className: 'h-64 flex items-center justify-center' },
-          React.createElement('p', { className: 'text-gray-500' }, 'Connect to your Google Sheet to see visualizations')
-        )
-      )
-    ),
-    
-    selectedModel && React.createElement(
-      'div',
-      { className: 'mt-8 p-4 bg-blue-50 rounded-md' },
-      React.createElement('h2', { className: 'font-semibold mb-2 text-gray-700' }, 'Selected Values:'),
-      React.createElement('p', null, 'First Hit Pattern: ', selectedModel || 'None'),
-      React.createElement('p', null, 'First Hit Time: ', selectedHighLow || 'None'),
-      showColorSelection && React.createElement('p', null, 'Color: ', selectedColor || 'None'),
-      showPercentage && React.createElement('p', null, 'Percentage: ', selectedPercentage || 'None')
-    ),
-
-    React.createElement(
-      'div',
-      { className: 'mt-8 p-4 bg-gray-50 rounded-md' },
-      React.createElement('h2', { className: 'font-semibold mb-4 text-gray-700' }, 'Google Sheets API Connection'),
+      ),
+      
       React.createElement(
         'div',
-        { className: 'grid grid-cols-1 md:grid-cols-2 gap-4 mb-4' },
+        { className: 'mt-8 p-6 bg-white rounded-lg border border-gray-200 shadow-sm' },
+        React.createElement('h2', { className: 'font-semibold mb-6 text-gray-800 text-xl' }, 'Visual Representation'),
+        this.state.selectedModel && this.state.probabilityStats && this.state.probabilityStats.outcomePercentages ? (
+          React.createElement(
+            'div',
+            { className: 'h-64' },
+            React.createElement(
+              'div',
+              { className: 'h-full flex items-end space-x-8 justify-center' },
+              Object.keys(this.state.probabilityStats.outcomePercentages).map(outcome => (
+                React.createElement(
+                  'div',
+                  { key: outcome, className: 'flex flex-col items-center justify-end h-full' },
+                  React.createElement('div', {
+                    className: 'w-24 ' + (
+                      outcome === 'Min' ? 'bg-purple-500' : 
+                      outcome === 'MinMed' ? 'bg-indigo-500' : 
+                      outcome === 'MedMax' ? 'bg-cyan-500' : 'bg-amber-500'
+                    ) + ' rounded-t-lg shadow-inner transition-all duration-500 ease-in-out',
+                    style: { height: this.state.probabilityStats.outcomePercentages[outcome] + '%' }
+                  }),
+                  React.createElement(
+                    'div',
+                    { className: 'mt-2 text-center' },
+                    React.createElement('p', { className: 'font-medium' }, outcome),
+                    React.createElement('p', { className: 'text-xl font-bold' }, this.state.probabilityStats.outcomePercentages[outcome] + '%')
+                  )
+                )
+              ))
+            )
+          )
+        ) : this.state.sheetData.length > 0 ? (
+          React.createElement(
+            'div',
+            { className: 'h-64 flex items-center justify-center' },
+            React.createElement('p', { className: 'text-gray-500' }, 'Select a first hit pattern and time to see probability visualization')
+          )
+        ) : (
+          React.createElement(
+            'div',
+            { className: 'h-64 flex items-center justify-center' },
+            React.createElement('p', { className: 'text-gray-500' }, 'Connect to your Google Sheet to see visualizations')
+          )
+        )
+      ),
+      
+      this.state.selectedModel && React.createElement(
+        'div',
+        { className: 'mt-8 p-4 bg-blue-50 rounded-md' },
+        React.createElement('h2', { className: 'font-semibold mb-2 text-gray-700' }, 'Selected Values:'),
+        React.createElement('p', null, 'First Hit Pattern: ', this.state.selectedModel || 'None'),
+        React.createElement('p', null, 'First Hit Time: ', this.state.selectedHighLow || 'None'),
+        this.state.showColorSelection && React.createElement('p', null, 'Color: ', this.state.selectedColor || 'None'),
+        this.state.showPercentage && React.createElement('p', null, 'Percentage: ', this.state.selectedPercentage || 'None')
+      ),
+
+      React.createElement(
+        'div',
+        { className: 'mt-8 p-4 bg-gray-50 rounded-md' },
+        React.createElement('h2', { className: 'font-semibold mb-4 text-gray-700' }, 'Google Sheets API Connection'),
         React.createElement(
           'div',
-          null,
-          React.createElement('label', { htmlFor: 'api-key', className: 'block text-sm font-medium text-gray-700 mb-1' }, 'API Key'),
+          { className: 'grid grid-cols-1 md:grid-cols-2 gap-4 mb-4' },
+          React.createElement(
+            'div',
+            null,
+            React.createElement('label', { htmlFor: 'api-key', className: 'block text-sm font-medium text-gray-700 mb-1' }, 'API Key'),
+            React.createElement('input', {
+              id: 'api-key',
+              type: 'text',
+              placeholder: 'Enter your Google API Key',
+              className: 'w-full p-2 border border-gray-300 rounded-md',
+              value: this.state.apiKey,
+              onChange: e => this.setState({ apiKey: e.target.value })
+            })
+          ),
+          React.createElement(
+            'div',
+            null,
+            React.createElement('label', { htmlFor: 'spreadsheet-id', className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Spreadsheet ID'),
+            React.createElement('input', {
+              id: 'spreadsheet-id',
+              type: 'text',
+              placeholder: 'Enter your Spreadsheet ID',
+              className: 'w-full p-2 border border-gray-300 rounded-md',
+              value: this.state.spreadsheetId,
+              onChange: e => this.setState({ spreadsheetId: e.target.value })
+            }),
+            React.createElement('p', { className: 'text-xs text-gray-500 mt-1' }, 'ID from your link: 1RLktcJRtgG2Hoszy8Z5Ur9OoVZP_ROxfIpAC6zRGE0Q')
+          )
+        ),
+        React.createElement(
+          'div',
+          { className: 'mb-4' },
+          React.createElement('label', { htmlFor: 'sheet-name', className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Sheet Name'),
           React.createElement('input', {
-            id: 'api-key',
+            id: 'sheet-name',
             type: 'text',
-            placeholder: 'Enter your Google API Key',
+            placeholder: 'e.g., DDR Modeling Raw',
             className: 'w-full p-2 border border-gray-300 rounded-md',
-            value: apiKey,
-            onChange: e => setApiKey(e.target.value)
+            value: this.state.sheetName,
+            onChange: e => {
+              this.setState({ sheetName: e.target.value, sheetRange: e.target.value + '!A1:Z1000' });
+            }
+          }),
+          React.createElement('p', { className: 'text-xs text-gray-500 mt-1' }, 'File name: DDR Modeling, Sheet name: DDR Modeling Raw')
+        ),
+        React.createElement(
+          'div',
+          { className: 'mb-4' },
+          React.createElement('label', { htmlFor: 'sheet-range', className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Sheet Range (optional)'),
+          React.createElement('input', {
+            id: 'sheet-range',
+            type: 'text',
+            placeholder: 'e.g., DDR Modeling Raw!A1:Z1000',
+            className: 'w-full p-2 border border-gray-300 rounded-md',
+            value: this.state.sheetRange,
+            onChange: e => this.setState({ sheetRange: e.target.value })
           })
         ),
         React.createElement(
           'div',
-          null,
-          React.createElement('label', { htmlFor: 'spreadsheet-id', className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Spreadsheet ID'),
-          React.createElement('input', {
-            id: 'spreadsheet-id',
-            type: 'text',
-            placeholder: 'Enter your Spreadsheet ID',
-            className: 'w-full p-2 border border-gray-300 rounded-md',
-            value: spreadsheetId,
-            onChange: e => setSpreadsheetId(e.target.value)
-          }),
-          React.createElement('p', { className: 'text-xs text-gray-500 mt-1' }, 'ID from your link: 1RLktcJRtgG2Hoszy8Z5Ur9OoVZP_ROxfIpAC6zRGE0Q')
-        )
-      ),
-      React.createElement(
-        'div',
-        { className: 'mb-4' },
-        React.createElement('label', { htmlFor: 'sheet-name', className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Sheet Name'),
-        React.createElement('input', {
-          id: 'sheet-name',
-          type: 'text',
-          placeholder: 'e.g., DDR Modeling Raw',
-          className: 'w-full p-2 border border-gray-300 rounded-md',
-          value: sheetName,
-          onChange: e => {
-            setSheetName(e.target.value);
-            setSheetRange(e.target.value + '!A1:Z1000');
-          }
-        }),
-        React.createElement('p', { className: 'text-xs text-gray-500 mt-1' }, 'File name: DDR Modeling, Sheet name: DDR Modeling Raw')
-      ),
-      React.createElement(
-        'div',
-        { className: 'mb-4' },
-        React.createElement('label', { htmlFor: 'sheet-range', className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Sheet Range (optional)'),
-        React.createElement('input', {
-          id: 'sheet-range',
-          type: 'text',
-          placeholder: 'e.g., DDR Modeling Raw!A1:Z1000',
-          className: 'w-full p-2 border border-gray-300 rounded-md',
-          value: sheetRange,
-          onChange: e => setSheetRange(e.target.value)
-        })
-      ),
-      React.createElement(
-        'div',
-        { className: 'flex justify-end' },
-        React.createElement(
-          'button',
-          {
-            className: 'bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md',
-            onClick: () => fetchGoogleSheetsAPI(apiKey, spreadsheetId, sheetRange),
-            disabled: !apiKey || !spreadsheetId
-          },
-          'Connect'
-        )
-      ),
-      React.createElement('p', { className: 'mt-2 text-sm text-gray-500' }, 'Important: Make sure your Google Sheet is shared with the appropriate permissions.', React.createElement('br'), 'For API access, set the sheet to "Anyone with the link can view" or more permissive.')
-    ),
-
-    probabilityStats && probabilityStats.firstHitStats && probabilityStats.secondHitStats && React.createElement(
-      'div',
-      { className: 'mt-6' },
-      React.createElement('h2', { className: 'font-semibold mb-4 text-gray-800 text-xl' }, 'Event Timing Analysis'),
-      React.createElement(
-        'div',
-        { className: 'mb-6 p-4 bg-blue-50 rounded-lg' },
-        React.createElement('h3', { className: 'font-medium text-gray-700 mb-2' }, 'First Hit Timing'),
-        React.createElement('p', null, 'Median Time: ', probabilityStats.firstHitStats.median || 'N/A'),
-        React.createElement('p', null, '70th Percentile: ', probabilityStats.firstHitStats.percentile70 || 'N/A'),
-        React.createElement('div', { className: 'mt-4 h-64' }, React.createElement('canvas', { id: 'firstHitChart', className: 'w-full h-full' }))
-      ),
-      React.createElement(
-        'div',
-        { className: 'mb-6 p-4 bg-green-50 rounded-lg' },
-        React.createElement('h3', { className: 'font-medium text-gray-700 mb-2' }, 'Second Hit Timing'),
-        React.createElement('p', null, 'Median Time: ', probabilityStats.secondHitStats.median || 'N/A'),
-        React.createElement('p', null, '70th Percentile: ', probabilityStats.secondHitStats.percentile70 || 'N/A'),
-        React.createElement('div', { className: 'mt-4 h-64' }, React.createElement('canvas', { id: 'secondHitChart', className: 'w-full h-full' }))
+          { className: 'flex justify-end' },
+          React.createElement(
+            'button',
+            {
+              className: 'bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md',
+              onClick: () => this.fetchGoogleSheetsAPI(this.state.apiKey, this.state.spreadsheetId, this.state.sheetRange),
+              disabled: !this.state.apiKey || !this.state.spreadsheetId
+            },
+            'Connect'
+          )
+        ),
+        React.createElement('p', { className: 'mt-2 text-sm text-gray-500' }, 'Important: Make sure your Google Sheet is shared with the appropriate permissions.', React.createElement('br'), 'For API access, set the sheet to "Anyone with the link can view" or more permissive.')
       )
-    )
-  );
-};
-
-React.useEffect(() => {
-  if (probabilityStats && probabilityStats.firstHitStats && probabilityStats.secondHitStats) {
-    const ctx1 = document.getElementById('firstHitChart').getContext('2d');
-    const ctx2 = document.getElementById('secondHitChart').getContext('2d');
-
-    if (window.firstHitChart) window.firstHitChart.destroy();
-    if (window.secondHitChart) window.secondHitChart.destroy();
-
-    window.firstHitChart = new Chart(ctx1, {
-      type: 'bar',
-      data: {
-        labels: Object.keys(probabilityStats.firstHitStats.counts),
-        datasets: [{
-          label: 'Occurrences',
-          data: Object.values(probabilityStats.firstHitStats.counts),
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
-          borderColor: 'rgba(75, 192, 192, 1)',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        scales: {
-          x: { title: { display: true, text: 'Time' } },
-          y: { title: { display: true, text: 'Occurrences' }, beginAtZero: true }
-        },
-        plugins: {
-          annotation: {
-            annotations: [
-              {
-                type: 'line',
-                xMin: probabilityStats.firstHitStats.median,
-                xMax: probabilityStats.firstHitStats.median,
-                borderColor: 'white',
-                borderWidth: 2
-              },
-              {
-                type: 'line',
-                xMin: probabilityStats.firstHitStats.percentile70,
-                xMax: probabilityStats.firstHitStats.percentile70,
-                borderColor: 'blue',
-                borderWidth: 2
-              }
-            ]
-          }
-        }
-      }
-    });
-
-    window.secondHitChart = new Chart(ctx2, {
-      type: 'bar',
-      data: {
-        labels: Object.keys(probabilityStats.secondHitStats.counts),
-        datasets: [{
-          label: 'Occurrences',
-          data: Object.values(probabilityStats.secondHitStats.counts),
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
-          borderColor: 'rgba(75, 192, 192, 1)',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        scales: {
-          x: { title: { display: true, text: 'Time' } },
-          y: { title: { display: true, text: 'Occurrences' }, beginAtZero: true }
-        },
-        plugins: {
-          annotation: {
-            annotations: [
-              {
-                type: 'line',
-                xMin: probabilityStats.secondHitStats.median,
-                xMax: probabilityStats.secondHitStats.median,
-                borderColor: 'white',
-                borderWidth: 2
-              },
-              {
-                type: 'line',
-                xMin: probabilityStats.secondHitStats.percentile70,
-                xMax: probabilityStats.secondHitStats.percentile70,
-                borderColor: 'blue',
-                borderWidth: 2
-              }
-            ]
-          }
-        }
-      }
-    });
+    );
   }
-}, [probabilityStats]);
+});
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(DDRDashboard));
