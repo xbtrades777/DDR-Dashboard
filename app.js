@@ -287,6 +287,131 @@ const DDRDashboard = React.createClass({
           )
         )
       ),
+      this.state.probabilityStats && this.state.probabilityStats.outcomePercentages && React.createElement(
+        'div',
+        { className: 'mt-6' },
+        React.createElement('h2', { className: 'font-semibold mb-4 text-gray-800 text-xl' }, 'Second Hit Probabilities'),
+        React.createElement(
+          'div',
+          { className: 'grid grid-cols-1 md:grid-cols-4 gap-4 mb-6' },
+          React.createElement(
+            'div',
+            { className: 'bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg shadow' },
+            React.createElement(
+              'div',
+              { className: 'flex items-center justify-between' },
+              React.createElement(
+                'div',
+                null,
+                React.createElement('h3', { className: 'text-sm font-medium text-purple-800' }, 'Min'),
+                React.createElement('p', { className: 'text-3xl font-bold text-purple-600' }, this.state.probabilityStats.outcomePercentages['Min'] + '%')
+              ),
+              React.createElement(
+                'div',
+                { className: 'h-12 w-12 bg-purple-200 rounded-full flex items-center justify-center' },
+                React.createElement('span', { className: 'text-purple-700 text-xl' }, 'M')
+              )
+            ),
+            React.createElement('p', { className: 'text-xs text-purple-700 mt-2' }, this.state.probabilityStats.outcomeCounts['Min'] + ' occurrences')
+          ),
+          React.createElement(
+            'div',
+            { className: 'bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg shadow' },
+            React.createElement(
+              'div',
+              { className: 'flex items-center justify-between' },
+              React.createElement(
+                'div',
+                null,
+                React.createElement('h3', { className: 'text-sm font-medium text-indigo-800' }, 'MinMed'),
+                React.createElement('p', { className: 'text-3xl font-bold text-indigo-600' }, this.state.probabilityStats.outcomePercentages['MinMed'] + '%')
+              ),
+              React.createElement(
+                'div',
+                { className: 'h-12 w-12 bg-indigo-200 rounded-full flex items-center justify-center' },
+                React.createElement('span', { className: 'text-indigo-700 text-xl' }, 'MM')
+              )
+            ),
+            React.createElement('p', { className: 'text-xs text-indigo-700 mt-2' }, this.state.probabilityStats.outcomeCounts['MinMed'] + ' occurrences')
+          ),
+          React.createElement(
+            'div',
+            { className: 'bg-gradient-to-br from-cyan-50 to-cyan-100 p-4 rounded-lg shadow' },
+            React.createElement(
+              'div',
+              { className: 'flex items-center justify-between' },
+              React.createElement(
+                'div',
+                null,
+                React.createElement('h3', { className: 'text-sm font-medium text-cyan-800' }, 'MedMax'),
+                React.createElement('p', { className: 'text-3xl font-bold text-cyan-600' }, this.state.probabilityStats.outcomePercentages['MedMax'] + '%')
+              ),
+              React.createElement(
+                'div',
+                { className: 'h-12 w-12 bg-cyan-200 rounded-full flex items-center justify-center' },
+                React.createElement('span', { className: 'text-cyan-700 text-xl' }, 'MX')
+              )
+            ),
+            React.createElement('p', { className: 'text-xs text-cyan-700 mt-2' }, this.state.probabilityStats.outcomeCounts['MedMax'] + ' occurrences')
+          ),
+          React.createElement(
+            'div',
+            { className: 'bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg shadow' },
+            React.createElement(
+              'div',
+              { className: 'flex items-center justify-between' },
+              React.createElement(
+                'div',
+                null,
+                React.createElement('h3', { className: 'text-sm font-medium text-amber-800' }, 'Max+'),
+                React.createElement('p', { className: 'text-3xl font-bold text-amber-600' }, this.state.probabilityStats.outcomePercentages['Max+'] + '%')
+              ),
+              React.createElement(
+                'div',
+                { className: 'h-12 w-12 bg-amber-200 rounded-full flex items-center justify-center' },
+                React.createElement('span', { className: 'text-amber-700 text-xl' }, 'M+')
+              )
+            ),
+            React.createElement('p', { className: 'text-xs text-amber-700 mt-2' }, this.state.probabilityStats.outcomeCounts['Max+'] + ' occurrences')
+          )
+        )
+      ),
+      this.state.probabilityStats && this.state.probabilityStats.resultPercentages && React.createElement(
+        'div',
+        { className: 'mt-6' },
+        React.createElement(
+          'div',
+          { className: 'bg-white p-4 rounded-lg shadow border border-gray-200' },
+          React.createElement('h3', { className: 'font-medium text-gray-700 mb-3' }, 'Results Distribution'),
+          React.createElement(
+            'div',
+            { className: 'space-y-3' },
+            Object.keys(this.state.probabilityStats.resultPercentages).map(result => (
+              React.createElement(
+                'div',
+                { key: result, className: 'space-y-1' },
+                React.createElement(
+                  'div',
+                  { className: 'flex justify-between text-sm' },
+                  React.createElement('span', { className: 'capitalize text-gray-600' }, result.replace(/_/g, ' ')),
+                  React.createElement('span', { className: 'font-medium' }, this.state.probabilityStats.resultPercentages[result] + '%')
+                ),
+                React.createElement(
+                  'div',
+                  { className: 'w-full bg-gray-200 rounded-full h-2.5' },
+                  React.createElement('div', {
+                    className: 'h-2.5 rounded-full ' + (
+                      result === 'win' ? 'bg-green-500' : 
+                      result === 'loss' ? 'bg-red-500' : 'bg-blue-500'
+                    ),
+                    style: { width: this.state.probabilityStats.resultPercentages[result] + '%' }
+                  })
+                )
+              )
+            ))
+          )
+        )
+      ),
       React.createElement(
         'div',
         { className: 'mt-8 p-4 bg-gray-50 rounded-md' },
