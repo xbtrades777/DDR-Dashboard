@@ -1,5 +1,4 @@
-const DDRDashboard = function() {
-  // All available first parts of models only
+const DDRDashboard = () => {
   const [selectedModel, setSelectedModel] = React.useState('');
   const [selectedHighLow, setSelectedHighLow] = React.useState('');
   const [selectedColor, setSelectedColor] = React.useState('');
@@ -16,7 +15,6 @@ const DDRDashboard = function() {
   const [sheetRange, setSheetRange] = React.useState('DDR Modeling Raw!A1:Z1000');
   const [showColorSelection, setShowColorSelection] = React.useState(false);
 
-  // All available first parts of models only
   const allModels = [
     'Min',
     'MinMed',
@@ -25,7 +23,6 @@ const DDRDashboard = function() {
     ''  // Blank option
   ];
 
-  // High/Low options
   const highLowOptions = [
     'Low ODR',
     'High ODR',
@@ -35,7 +32,6 @@ const DDRDashboard = function() {
     'High RDR'
   ];
 
-  // Color options
   const colorOptions = [
     'MinMed Green',
     'MedMax Green',
@@ -45,7 +41,6 @@ const DDRDashboard = function() {
     'Max+ Red'
   ];
 
-  // Percentage options for Min
   const percentageOptions = [
     'Green 0 - 50%',
     'Green 50 - 100%',
@@ -797,6 +792,5 @@ React.useEffect(() => {
   }
 }, [probabilityStats]);
 
-// Render the React component to the DOM
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(DDRDashboard));
