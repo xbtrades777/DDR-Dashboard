@@ -112,6 +112,24 @@ const DDRDashboard = React.createClass({
     }
   },
 
+  parseTime(timeStr) {
+    if (!timeStr) return 0;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes; // Convert to minutes past midnight
+  },
+
+  calculateDuration(startTime, endTime) {
+    const startMinutes = this.parseTime(startTime);
+    let endMinutes = this.parseTime(endTime);
+
+    // Handle wrap-around (if end time is earlier than start time, assume next day)
+    if (endMinutes < startMinutes) {
+      endMinutes += 24 * 60; // Add 24 hours in minutes
+    }
+
+    return endMinutes - startMinutes; // Duration in minutes
+  },
+
   calculateProbabilities(filteredData) {
     const totalCount = filteredData.length;
     const outcomeTypes = ['Min', 'MinMed', 'MedMax', 'Max+'];
@@ -136,22 +154,18 @@ const DDRDashboard = React.createClass({
         : 0;
     });
 
-    // Calculate durations using Start Time (Column H) and End Time (Column J)
+    // Calculate durations using Start Time and End Time
     const firstHitDurations = [];
     const secondHitDurations = [];
 
     filteredData.forEach(item => {
       if (item.start_time && item.end_time) {
-        const startTime = new Date(item.start_time);
-        const endTime = new Date(item.end_time);
-        if (!isNaN(startTime) && !isNaN(endTime)) {
-          const durationMinutes = (endTime - startTime) / (1000 * 60); // Duration in minutes
-          if (item.first_hit_time) {
-            firstHitDurations.push(durationMinutes);
-          }
-          if (item.second_hit_time) {
-            secondHitDurations.push(durationMinutes);
-          }
+        const duration = this.calculateDuration(item.start_time, item.end_time);
+        if (item.first_hit_time && item.first_hit_time.trim()) {
+          firstHitDurations.push(duration);
+        }
+        if (item.second_hit_time && item.second_hit_time.trim()) {
+          secondHitDurations.push(duration);
         }
       }
     });
@@ -166,7 +180,7 @@ const DDRDashboard = React.createClass({
     const percentile70SecondHit = secondHitDurations[Math.floor(secondHitDurations.length * 0.7)] || 0;
 
     // Bin the durations for the histogram
-    const binSize = 5; // Bin by 5-minute intervals
+    const binSize = 10; // Bin by 10-minute intervals
     const firstHitBins = {};
     const secondHitBins = {};
 
@@ -433,17 +447,17 @@ const DDRDashboard = React.createClass({
                 });
               }),
               this.state.probabilityStats.medianFirstHit !== 0 && React.createElement('line', {
-                x1: Math.floor(this.state.probabilityStats.medianFirstHit / 5) * 40 + 19,
+                x1: Math.floor(this.state.probabilityStats.medianFirstHit / 10) * 40 + 19,
                 y1: 0,
-                x2: Math.floor(this.state.probabilityStats.medianFirstHit / 5) * 40 + 19,
+                x2: Math.floor(this.state.probabilityStats.medianFirstHit / 10) * 40 + 19,
                 y2: 200,
                 stroke: 'white',
                 strokeWidth: 2
               }),
               this.state.probabilityStats.percentile70FirstHit !== 0 && React.createElement('line', {
-                x1: Math.floor(this.state.probabilityStats.percentile70FirstHit / 5) * 40 + 19,
+                x1: Math.floor(this.state.probabilityStats.percentile70FirstHit / 10) * 40 + 19,
                 y1: 0,
-                x2: Math.floor(this.state.probabilityStats.percentile70FirstHit / 5) * 40 + 19,
+                x2: Math.floor(this.state.probabilityStats.percentile70FirstHit / 10) * 40 + 19,
                 y2: 200,
                 stroke: 'blue',
                 strokeWidth: 2
@@ -489,17 +503,17 @@ const DDRDashboard = React.createClass({
                 });
               }),
               this.state.probabilityStats.medianSecondHit !== 0 && React.createElement('line', {
-                x1: Math.floor(this.state.probabilityStats.medianSecondHit / 5) * 40 + 19,
+                x1: Math.floor(this.state.probabilityStats.medianSecondHit / 10) * 40 + 19,
                 y1: 0,
-                x2: Math.floor(this.state.probabilityStats.medianSecondHit / 5) * 40 + 19,
+                x2: Math.floor(this.state.probabilityStats.medianSecondHit / 10) * 40 + 19,
                 y2: 200,
                 stroke: 'white',
                 strokeWidth: 2
               }),
               this.state.probabilityStats.percentile70SecondHit !== 0 && React.createElement('line', {
-                x1: Math.floor(this.state.probabilityStats.percentile70SecondHit / 5) * 40 + 19,
+                x1: Math.floor(this.state.probabilityStats.percentile70SecondHit / 10) * 40 + 19,
                 y1: 0,
-                x2: Math.floor(this.state.probabilityStats.percentile70SecondHit / 5) * 40 + 19,
+                x2: Math.floor(this.state.probabilityStats.percentile70SecondHit / 10) * 40 + 19,
                 y2: 200,
                 stroke: 'blue',
                 strokeWidth: 2
