@@ -653,4 +653,205 @@ const DDRDashboard = function() {
     React.createElement(
       'div',
       { className: 'mt-8 p-4 bg-gray-50 rounded-md' },
-      React.createElement('h2', { className: 'font-semibold mb-4 text-gray-700' }, '
+      React.createElement('h2', { className: 'font-semibold mb-4 text-gray-700' }, 'Google Sheets API Connection'),
+      React.createElement(
+        'div',
+        { className: 'grid grid-cols-1 md:grid-cols-2 gap-4 mb-4' },
+        React.createElement(
+          'div',
+          null,
+          React.createElement('label', { htmlFor: 'api-key', className: 'block text-sm font-medium text-gray-700 mb-1' }, 'API Key'),
+          React.createElement('input', {
+            id: 'api-key',
+            type: 'text',
+            placeholder: 'Enter your Google API Key',
+            className: 'w-full p-2 border border-gray-300 rounded-md',
+            value: apiKey,
+            onChange: function(e) { setApiKey(e.target.value); }
+          })
+        ),
+        React.createElement(
+          'div',
+          null,
+          React.createElement('label', { htmlFor: 'spreadsheet-id', className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Spreadsheet ID'),
+          React.createElement('input', {
+            id: 'spreadsheet-id',
+            type: 'text',
+            placeholder: 'Enter your Spreadsheet ID',
+            className: 'w-full p-2 border border-gray-300 rounded-md',
+            value: spreadsheetId,
+            onChange: function(e) { setSpreadsheetId(e.target.value); }
+          }),
+          React.createElement('p', { className: 'text-xs text-gray-500 mt-1' }, 'ID from your link: 1RLktcJRtgG2Hoszy8Z5Ur9OoVZP_ROxfIpAC6zRGE0Q')
+        )
+      ),
+      React.createElement(
+        'div',
+        { className: 'mb-4' },
+        React.createElement('label', { htmlFor: 'sheet-name', className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Sheet Name'),
+        React.createElement('input', {
+          id: 'sheet-name',
+          type: 'text',
+          placeholder: 'e.g., DDR Modeling Raw',
+          className: 'w-full p-2 border border-gray-300 rounded-md',
+          value: sheetName,
+          onChange: function(e) {
+            setSheetName(e.target.value);
+            setSheetRange(e.target.value + '!A1:Z1000');
+          }
+        }),
+        React.createElement('p', { className: 'text-xs text-gray-500 mt-1' }, 'File name: DDR Modeling, Sheet name: DDR Modeling Raw')
+      ),
+      React.createElement(
+        'div',
+        { className: 'mb-4' },
+        React.createElement('label', { htmlFor: 'sheet-range', className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Sheet Range (optional)'),
+        React.createElement('input', {
+          id: 'sheet-range',
+          type: 'text',
+          placeholder: 'e.g., DDR Modeling Raw!A1:Z1000',
+          className: 'w-full p-2 border border-gray-300 rounded-md',
+          value: sheetRange,
+          onChange: function(e) { setSheetRange(e.target.value); }
+        })
+      ),
+      React.createElement(
+        'div',
+        { className: 'flex justify-end' },
+        React.createElement(
+          'button',
+          {
+            className: 'bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md',
+            onClick: function() { fetchGoogleSheetsAPI(apiKey, spreadsheetId, sheetRange); },
+            disabled: !apiKey || !spreadsheetId
+          },
+          'Connect'
+        )
+      ),
+      React.createElement('p', { className: 'mt-2 text-sm text-gray-500' }, 'Important: Make sure your Google Sheet is shared with the appropriate permissions.', React.createElement('br'), 'For API access, set the sheet to "Anyone with the link can view" or more permissive.')
+    ),
+
+    probabilityStats && probabilityStats.firstHitStats && probabilityStats.secondHitStats && React.createElement(
+      'div',
+      { className: 'mt-6' },
+      React.createElement('h2', { className: 'font-semibold mb-4 text-gray-800 text-xl' }, 'Event Timing Analysis'),
+      React.createElement(
+        'div',
+        { className: 'mb-6 p-4 bg-blue-50 rounded-lg' },
+        React.createElement('h3', { className: 'font-medium text-gray-700 mb-2' }, 'First Hit Timing'),
+        React.createElement('p', null, 'Median Time: ', probabilityStats.firstHitStats.median || 'N/A'),
+        React.createElement('p', null, '70th Percentile: ', probabilityStats.firstHitStats.percentile70 || 'N/A'),
+        React.createElement('div', { className: 'mt-4 h-64' }, React.createElement('canvas', { id: 'firstHitChart', className: 'w-full h-full' }))
+      ),
+      React.createElement(
+        'div',
+        { className: 'mb-6 p-4 bg-green-50 rounded-lg' },
+        React.createElement('h3', { className: 'font-medium text-gray-700 mb-2' }, 'Second Hit Timing'),
+        React.createElement('p', null, 'Median Time: ', probabilityStats.secondHitStats.median || 'N/A'),
+        React.createElement('p', null, '70th Percentile: ', probabilityStats.secondHitStats.percentile70 || 'N/A'),
+        React.createElement('div', { className: 'mt-4 h-64' }, React.createElement('canvas', { id: 'secondHitChart', className: 'w-full h-full' }))
+      )
+    )
+  );
+};
+
+// Add chart rendering after component definition
+useEffect(function() {
+  if (probabilityStats && probabilityStats.firstHitStats && probabilityStats.secondHitStats) {
+    var ctx1 = document.getElementById('firstHitChart').getContext('2d');
+    var ctx2 = document.getElementById('secondHitChart').getContext('2d');
+
+    // Clear previous charts
+    if (window.firstHitChart) window.firstHitChart.destroy();
+    if (window.secondHitChart) window.secondHitChart.destroy();
+
+    // First Hit Chart
+    window.firstHitChart = new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(probabilityStats.firstHitStats.counts),
+        datasets: [{
+          label: 'Occurrences',
+          data: Object.values(probabilityStats.firstHitStats.counts),
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          borderColor: 'rgba(75, 192, 192, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        scales: {
+          x: { title: { display: true, text: 'Time' } },
+          y: { title: { display: true, text: 'Occurrences' }, beginAtZero: true }
+        },
+        plugins: {
+          annotation: {
+            annotations: [
+              {
+                type: 'line',
+                xMin: probabilityStats.firstHitStats.median,
+                xMax: probabilityStats.firstHitStats.median,
+                borderColor: 'white',
+                borderWidth: 2
+              },
+              {
+                type: 'line',
+                xMin: probabilityStats.firstHitStats.percentile70,
+                xMax: probabilityStats.firstHitStats.percentile70,
+                borderColor: 'blue',
+                borderWidth: 2
+              }
+            ]
+          }
+        }
+      }
+    });
+
+    // Second Hit Chart
+    window.secondHitChart = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(probabilityStats.secondHitStats.counts),
+        datasets: [{
+          label: 'Occurrences',
+          data: Object.values(probabilityStats.secondHitStats.counts),
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          borderColor: 'rgba(75, 192, 192, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        scales: {
+          x: { title: { display: true, text: 'Time' } },
+          y: { title: { display: true, text: 'Occurrences' }, beginAtZero: true }
+        },
+        plugins: {
+          annotation: {
+            annotations: [
+              {
+                type: 'line',
+                xMin: probabilityStats.secondHitStats.median,
+                xMax: probabilityStats.secondHitStats.median,
+                borderColor: 'white',
+                borderWidth: 2
+              },
+              {
+                type: 'line',
+                xMin: probabilityStats.secondHitStats.percentile70,
+                xMax: probabilityStats.secondHitStats.percentile70,
+                borderColor: 'blue',
+                borderWidth: 2
+              }
+            ]
+          }
+        }
+      }
+    });
+  }
+}, [probabilityStats]);
+
+// Need to define these for the browser environment since we're not using imports
+var React = { createElement: React.createElement, useState: React.useState, useEffect: React.useEffect };
+var ReactDOM = { render: ReactDOM.render };
+
+// Render the React component to the DOM
+ReactDOM.render(React.createElement(DDRDashboard), document.getElementById('root'));
