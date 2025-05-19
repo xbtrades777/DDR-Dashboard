@@ -1,3 +1,19 @@
+// Load Chart.js library before the component
+const loadChartJS = () => {
+  if (typeof Chart === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js';
+    script.async = true;
+    script.onload = () => {
+      console.log('Chart.js loaded successfully');
+    };
+    document.head.appendChild(script);
+  }
+};
+
+// Call this function immediately
+loadChartJS();
+
 const DDRDashboard = () => {
   // All available first parts of models only
   const allModels = [
@@ -55,6 +71,7 @@ const DDRDashboard = () => {
   // State for time distribution charts
   const [firstHitTimeDistribution, setFirstHitTimeDistribution] = useState(null);
   const [secondHitTimeDistribution, setSecondHitTimeDistribution] = useState(null);
+  const [chartsInitialized, setChartsInitialized] = useState(false);
 
   // State for API connection parameters
   const [apiKey, setApiKey] = useState('AIzaSyBB5_LHGAX_tirA23TzDEesMJhm_Srrs9s');
@@ -93,6 +110,38 @@ const DDRDashboard = () => {
   useEffect(() => {
     updateDatasetCount();
   }, [selectedModel, selectedHighLow, selectedColor, selectedPercentage, sheetData]);
+
+  // Effect to render time distribution charts when data changes
+  useEffect(() => {
+    if (firstHitTimeDistribution && secondHitTimeDistribution) {
+      // Wait for Chart.js to load
+      const tryRenderCharts = () => {
+        if (typeof Chart === 'undefined') {
+          // If Chart.js isn't loaded yet, retry after a short delay
+          setTimeout(tryRenderCharts, 200);
+          return;
+        }
+        
+        renderTimeDistributionChart(
+          'firstHitTimeChart', 
+          firstHitTimeDistribution, 
+          'First Hit Time Distribution', 
+          'rgba(54, 162, 235, 0.7)'
+        );
+        
+        renderTimeDistributionChart(
+          'secondHitTimeChart', 
+          secondHitTimeDistribution, 
+          'Second Hit Time Distribution', 
+          'rgba(255, 99, 132, 0.7)'
+        );
+        
+        setChartsInitialized(true);
+      };
+      
+      tryRenderCharts();
+    }
+  }, [firstHitTimeDistribution, secondHitTimeDistribution]);
 
   // Function to parse time strings to get hour value
   const parseTimeToTimeBlock = (timeStr) => {
@@ -242,106 +291,41 @@ const DDRDashboard = () => {
 
   // Calculate time distributions for first and second hit times
   const calculateTimeDistributions = (filteredData) => {
-    // Check if required columns exist
-    const sampleItem = filteredData[0] || {};
-    const hasFirstHitTime = 'first_hit_time_15_min' in sampleItem || 'first_hit_time_30_min' in sampleItem || 'first_hit_time_60_min' in sampleItem;
-    const hasSecondHitTime = 'second_hit_time_15_min' in sampleItem || 'second_hit_time_30_min' in sampleItem || 'second_hit_time_60_min' in sampleItem;
+    // Since we don't have detailed time data, let's use the session information
+    const timeCategories = ['ODR', 'Trans', 'RDR'];
+    const firstHitCounts = { 'ODR': 0, 'Trans': 0, 'RDR': 0 };
+    const secondHitCounts = { 'ODR': 0, 'Trans': 0, 'RDR': 0 };
     
-    console.log('Available columns for time distribution:', Object.keys(sampleItem));
-    console.log('Has first hit time columns:', hasFirstHitTime);
-    console.log('Has second hit time columns:', hasSecondHitTime);
-    
-    // If we don't have the required columns, use a simpler approach
-    if (!hasFirstHitTime || !hasSecondHitTime) {
-      // Use the session information (ODR, Trans, RDR) to approximate time buckets
-      const timeCategories = ['ODR', 'Trans', 'RDR'];
-      const firstHitCounts = { 'ODR': 0, 'Trans': 0, 'RDR': 0 };
-      const secondHitCounts = { 'ODR': 0, 'Trans': 0, 'RDR': 0 };
-      
-      filteredData.forEach(item => {
-        // Process first hit session
-        if (item.first_hit_time) {
-          const session = item.first_hit_time.includes('ODR') ? 'ODR' : 
-                         item.first_hit_time.includes('Trans') ? 'Trans' : 
-                         item.first_hit_time.includes('RDR') ? 'RDR' : null;
-          
-          if (session) firstHitCounts[session]++;
-        }
-        
-        // Process second hit session
-        if (item.second_hit_time) {
-          const session = item.second_hit_time.includes('ODR') ? 'ODR' : 
-                         item.second_hit_time.includes('Trans') ? 'Trans' : 
-                         item.second_hit_time.includes('RDR') ? 'RDR' : null;
-          
-          if (session) secondHitCounts[session]++;
-        }
-      });
-      
-      // Set the simplified distributions
-      setFirstHitTimeDistribution({
-        labels: timeCategories,
-        data: timeCategories.map(cat => firstHitCounts[cat])
-      });
-      
-      setSecondHitTimeDistribution({
-        labels: timeCategories,
-        data: timeCategories.map(cat => secondHitCounts[cat])
-      });
-      
-      return;
-    }
-    
-    // Generate all time blocks from 03:00 to 15:55 in 15-min intervals
-    const timeBlocks = [];
-    for (let hour = 3; hour <= 15; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
-        const formattedHour = hour.toString().padStart(2, '0');
-        const formattedMinute = minute.toString().padStart(2, '0');
-        timeBlocks.push(`${formattedHour}:${formattedMinute}`);
-      }
-    }
-    
-    // Initialize counters for first hit times
-    const firstHitCounts = {};
-    timeBlocks.forEach(block => {
-      firstHitCounts[block] = 0;
-    });
-    
-    // Initialize counters for second hit times
-    const secondHitCounts = {};
-    timeBlocks.forEach(block => {
-      secondHitCounts[block] = 0;
-    });
-
-    // Count occurrences of each time block
     filteredData.forEach(item => {
-      // Process first hit time
-      const firstHitTimeBlock = parseTimeToTimeBlock(item.first_hit_time_exact);
-      if (firstHitTimeBlock && firstHitCounts.hasOwnProperty(firstHitTimeBlock)) {
-        firstHitCounts[firstHitTimeBlock]++;
+      // Process first hit session
+      if (item.first_hit_time) {
+        const session = item.first_hit_time.includes('ODR') ? 'ODR' : 
+                       item.first_hit_time.includes('Trans') ? 'Trans' : 
+                       item.first_hit_time.includes('RDR') ? 'RDR' : null;
+        
+        if (session) firstHitCounts[session]++;
       }
       
-      // Process second hit time
-      const secondHitTimeBlock = parseTimeToTimeBlock(item.second_hit_time_exact);
-      if (secondHitTimeBlock && secondHitCounts.hasOwnProperty(secondHitTimeBlock)) {
-        secondHitCounts[secondHitTimeBlock]++;
+      // Process second hit session
+      if (item.second_hit_time) {
+        const session = item.second_hit_time.includes('ODR') ? 'ODR' : 
+                       item.second_hit_time.includes('Trans') ? 'Trans' : 
+                       item.second_hit_time.includes('RDR') ? 'RDR' : null;
+        
+        if (session) secondHitCounts[session]++;
       }
     });
     
-    // Convert to arrays for Chart.js
-    const firstHitDistribution = {
-      labels: timeBlocks,
-      data: timeBlocks.map(block => firstHitCounts[block])
-    };
+    // Set the simplified distributions
+    setFirstHitTimeDistribution({
+      labels: timeCategories,
+      data: timeCategories.map(cat => firstHitCounts[cat])
+    });
     
-    const secondHitDistribution = {
-      labels: timeBlocks,
-      data: timeBlocks.map(block => secondHitCounts[block])
-    };
-    
-    setFirstHitTimeDistribution(firstHitDistribution);
-    setSecondHitTimeDistribution(secondHitDistribution);
+    setSecondHitTimeDistribution({
+      labels: timeCategories,
+      data: timeCategories.map(cat => secondHitCounts[cat])
+    });
   };
 
   // Calculate probability statistics
@@ -467,7 +451,7 @@ const DDRDashboard = () => {
     
     // Check if Chart.js is loaded
     if (typeof Chart === 'undefined') {
-      console.error('Chart.js is not loaded. Please include Chart.js library.');
+      console.error('Chart.js is not loaded yet. Cannot render chart: ' + canvasId);
       return;
     }
 
@@ -516,40 +500,13 @@ const DDRDashboard = () => {
           x: {
             title: {
               display: true,
-              text: 'Time (15-minute intervals)'
-            },
-            ticks: {
-              maxRotation: 90,
-              minRotation: 90,
-              autoSkip: true,
-              maxTicksLimit: 20
+              text: 'Session'
             }
           }
         }
       }
     });
   };
-
-  // Effect to render time distribution charts when data changes
-  useEffect(() => {
-    if (firstHitTimeDistribution) {
-      renderTimeDistributionChart(
-        'firstHitTimeChart', 
-        firstHitTimeDistribution, 
-        'First Hit Time Distribution', 
-        'rgba(54, 162, 235, 0.7)'
-      );
-    }
-    
-    if (secondHitTimeDistribution) {
-      renderTimeDistributionChart(
-        'secondHitTimeChart', 
-        secondHitTimeDistribution, 
-        'Second Hit Time Distribution', 
-        'rgba(255, 99, 132, 0.7)'
-      );
-    }
-  }, [firstHitTimeDistribution, secondHitTimeDistribution]);
 
   // Handle model selection change
   const handleModelChange = (event) => {
@@ -582,9 +539,6 @@ const DDRDashboard = () => {
   return (
     <div className="p-6 max-w-4xl mx-auto bg-white rounded-lg shadow-lg">
       <h1 className="text-2xl font-bold mb-6 text-gray-800">DDR Probability Dashboard</h1>
-      
-      {/* Add Chart.js library */}
-      <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* START Model Selection */}
@@ -707,292 +661,3 @@ const DDRDashboard = () => {
             {/* Min Outcome Card */}
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg shadow">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-purple-800">Min</h3>
-                  <p className="text-3xl font-bold text-purple-600">{probabilityStats.outcomePercentages['Min']}%</p>
-                </div>
-                <div className="h-12 w-12 bg-purple-200 rounded-full flex items-center justify-center">
-                  <span className="text-purple-700 text-xl">M</span>
-                </div>
-              </div>
-              <p className="text-xs text-purple-700 mt-2">
-                {probabilityStats.outcomeCounts['Min']} occurrences out of {probabilityStats.totalCount} trades
-              </p>
-            </div>
-            
-            {/* MinMed Outcome Card */}
-            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-indigo-800">MinMed</h3>
-                  <p className="text-3xl font-bold text-indigo-600">{probabilityStats.outcomePercentages['MinMed']}%</p>
-                </div>
-                <div className="h-12 w-12 bg-indigo-200 rounded-full flex items-center justify-center">
-                  <span className="text-indigo-700 text-xl">MM</span>
-                </div>
-              </div>
-              <p className="text-xs text-indigo-700 mt-2">
-                {probabilityStats.outcomeCounts['MinMed']} occurrences out of {probabilityStats.totalCount} trades
-              </p>
-            </div>
-            
-            {/* MedMax Outcome Card */}
-            <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 p-4 rounded-lg shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-cyan-800">MedMax</h3>
-                  <p className="text-3xl font-bold text-cyan-600">{probabilityStats.outcomePercentages['MedMax']}%</p>
-                </div>
-                <div className="h-12 w-12 bg-cyan-200 rounded-full flex items-center justify-center">
-                  <span className="text-cyan-700 text-xl">MX</span>
-                </div>
-              </div>
-              <p className="text-xs text-cyan-700 mt-2">
-                {probabilityStats.outcomeCounts['MedMax']} occurrences out of {probabilityStats.totalCount} trades
-              </p>
-            </div>
-            
-            {/* Max+ Outcome Card */}
-            <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-amber-800">Max+</h3>
-                  <p className="text-3xl font-bold text-amber-600">{probabilityStats.outcomePercentages['Max+']}%</p>
-                </div>
-                <div className="h-12 w-12 bg-amber-200 rounded-full flex items-center justify-center">
-                  <span className="text-amber-700 text-xl">M+</span>
-                </div>
-              </div>
-              <p className="text-xs text-amber-700 mt-2">
-                {probabilityStats.outcomeCounts['Max+']} occurrences out of {probabilityStats.totalCount} trades
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Timing Location Probabilities */}
-      {probabilityStats && probabilityStats.locationPercentages && (
-        <div className="mt-6">
-          <h2 className="font-semibold mb-4 text-gray-800 text-xl">Second Hit Location Probabilities</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {/* ODR Location Card */}
-            <div className="bg-gradient-to-br from-lime-50 to-lime-100 p-4 rounded-lg shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-lime-800">ODR</h3>
-                  <p className="text-3xl font-bold text-lime-600">{probabilityStats.locationPercentages['ODR']}%</p>
-                </div>
-                <div className="h-12 w-12 bg-lime-200 rounded-full flex items-center justify-center">
-                  <span className="text-lime-700 text-xl">O</span>
-                </div>
-              </div>
-              <p className="text-xs text-lime-700 mt-2">
-                {probabilityStats.locationCounts['ODR']} occurrences out of {probabilityStats.totalCount} trades
-              </p>
-            </div>
-            
-            {/* Trans Location Card */}
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-orange-800">Trans</h3>
-                  <p className="text-3xl font-bold text-orange-600">{probabilityStats.locationPercentages['Trans']}%</p>
-                </div>
-                <div className="h-12 w-12 bg-orange-200 rounded-full flex items-center justify-center">
-                  <span className="text-orange-700 text-xl">T</span>
-                </div>
-              </div>
-              <p className="text-xs text-orange-700 mt-2">
-                {probabilityStats.locationCounts['Trans']} occurrences out of {probabilityStats.totalCount} trades
-              </p>
-            </div>
-            
-            {/* RDR Location Card */}
-            <div className="bg-gradient-to-br from-violet-50 to-violet-100 p-4 rounded-lg shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-violet-800">RDR</h3>
-                  <p className="text-3xl font-bold text-violet-600">{probabilityStats.locationPercentages['RDR']}%</p>
-                </div>
-                <div className="h-12 w-12 bg-violet-200 rounded-full flex items-center justify-center">
-                  <span className="text-violet-700 text-xl">R</span>
-                </div>
-              </div>
-              <p className="text-xs text-violet-700 mt-2">
-                {probabilityStats.locationCounts['RDR']} occurrences out of {probabilityStats.totalCount} trades
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Results Distribution */}
-      {probabilityStats && probabilityStats.resultPercentages && (
-        <div className="mt-6">
-          <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
-            <h3 className="font-medium text-gray-700 mb-3">Results Distribution</h3>
-            <div className="space-y-3">
-              {Object.entries(probabilityStats.resultPercentages).map(([result, percentage]) => (
-                <div key={result} className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="capitalize text-gray-600">{result.replace(/_/g, ' ')}</span>
-                    <span className="font-medium">{percentage}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div 
-                      className={`h-2.5 rounded-full ${
-                        result === 'win' ? 'bg-green-500' : 
-                        result === 'loss' ? 'bg-red-500' : 'bg-blue-500'
-                      }`}
-                      style={{ width: `${percentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Visual representation area with basic chart */}
-      <div className="mt-8 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
-        <h2 className="font-semibold mb-6 text-gray-800 text-xl">Visual Representation</h2>
-        
-        {selectedModel && probabilityStats && probabilityStats.outcomePercentages ? (
-          <div className="h-64">
-            <div className="h-full flex items-end space-x-8 justify-center">
-              {Object.entries(probabilityStats.outcomePercentages).map(([outcome, percentage]) => (
-                <div key={outcome} className="flex flex-col items-center justify-end h-full">
-                  <div 
-                    className={`w-24 ${
-                      outcome === 'Min' ? 'bg-purple-500' : 
-                      outcome === 'MinMed' ? 'bg-indigo-500' : 
-                      outcome === 'MedMax' ? 'bg-cyan-500' : 'bg-amber-500'
-                    } rounded-t-lg shadow-inner transition-all duration-500 ease-in-out`}
-                    style={{ height: `${percentage}%` }}
-                  ></div>
-                  <div className="mt-2 text-center">
-                    <p className="font-medium">{outcome}</p>
-                    <p className="text-xl font-bold">{percentage}%</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : sheetData.length > 0 ? (
-          <div className="h-64 flex items-center justify-center">
-            <p className="text-gray-500">Select a first hit pattern and time to see probability visualization</p>
-          </div>
-        ) : (
-          <div className="h-64 flex items-center justify-center">
-            <p className="text-gray-500">Connect to your Google Sheet to see visualizations</p>
-          </div>
-        )}
-      </div>
-      
-      {/* Selected Values Display */}
-      {selectedModel && (
-        <div className="mt-8 p-4 bg-blue-50 rounded-md">
-          <h2 className="font-semibold mb-2 text-gray-700">Selected Values:</h2>
-          <p><strong>First Hit Pattern:</strong> {selectedModel || 'None'}</p>
-          <p><strong>First Hit Time:</strong> {selectedHighLow || 'None'}</p>
-          {showColorSelection && (
-            <p><strong>Color:</strong> {selectedColor || 'None'}</p>
-          )}
-          {showPercentage && (
-            <p><strong>Percentage:</strong> {selectedPercentage || 'None'}</p>
-          )}
-        </div>
-      )}
-
-      {/* Google Sheets API Connection UI */}
-      <div className="mt-8 p-4 bg-gray-50 rounded-md">
-        <h2 className="font-semibold mb-4 text-gray-700">Google Sheets API Connection</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label htmlFor="api-key" className="block text-sm font-medium text-gray-700 mb-1">
-              API Key
-            </label>
-            <input 
-              id="api-key"
-              type="text" 
-              placeholder="Enter your Google API Key" 
-              className="w-full p-2 border border-gray-300 rounded-md"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="spreadsheet-id" className="block text-sm font-medium text-gray-700 mb-1">
-              Spreadsheet ID
-            </label>
-            <input 
-              id="spreadsheet-id"
-              type="text" 
-              placeholder="Enter your Spreadsheet ID" 
-              className="w-full p-2 border border-gray-300 rounded-md"
-              value={spreadsheetId}
-              onChange={(e) => setSpreadsheetId(e.target.value)}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              ID from your link: 1RLktcJRtgG2Hoszy8Z5Ur9OoVZP_ROxfIpAC6zRGE0Q
-            </p>
-          </div>
-        </div>
-        <div className="mb-4">
-          <label htmlFor="sheet-name" className="block text-sm font-medium text-gray-700 mb-1">
-            Sheet Name
-          </label>
-          <input 
-            id="sheet-name"
-            type="text" 
-            placeholder="e.g., DDR Modeling Raw" 
-            className="w-full p-2 border border-gray-300 rounded-md"
-            value={sheetName}
-            onChange={(e) => {
-              setSheetName(e.target.value);
-              setSheetRange(`${e.target.value}!A1:Z1000`);
-            }}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            File name: DDR Modeling, Sheet name: DDR Modeling Raw
-          </p>
-        </div>
-        <div className="mb-4">
-          <label htmlFor="sheet-range" className="block text-sm font-medium text-gray-700 mb-1">
-            Sheet Range (optional)
-          </label>
-          <input 
-            id="sheet-range"
-            type="text" 
-            placeholder="e.g., DDR Modeling Raw!A1:Z1000" 
-            className="w-full p-2 border border-gray-300 rounded-md"
-            value={sheetRange}
-            onChange={(e) => setSheetRange(e.target.value)}
-          />
-        </div>
-        <div className="flex justify-end">
-          <button 
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
-            onClick={() => fetchGoogleSheetsAPI(apiKey, spreadsheetId, sheetRange)}
-            disabled={!apiKey || !spreadsheetId}
-          >
-            Connect
-          </button>
-        </div>
-        <p className="mt-2 text-sm text-gray-500">
-          Important: Make sure your Google Sheet is shared with the appropriate permissions.
-          <br />
-          For API access, set the sheet to "Anyone with the link can view" or more permissive.
-        </p>
-      </div>
-    </div>
-  );
-};
-
-// Need to define these for the browser environment since we're not using imports
-const { useState, useEffect } = React;
-
-// Render the React component to the DOM
-ReactDOM.render(<DDRDashboard />, document.getElementById('root'));
