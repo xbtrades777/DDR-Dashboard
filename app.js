@@ -135,52 +135,45 @@ const DDRDashboard = React.createClass({
         ? ((outcomeCounts[type] / totalCount) * 100).toFixed(1) 
         : 0;
     });
-    
-    const resultField = 'result';
-    const resultCounts = {};
-    let totalResults = 0;
-    
-    filteredData.forEach(item => {
-      if (item[resultField]) {
-        resultCounts[item[resultField]] = (resultCounts[item[resultField]] || 0) + 1;
-        totalResults++;
-      }
+
+    // Calculate median and 70th percentile for First Hit Time and Second Hit Time
+    const firstHitTimes = filteredData.map(item => item.first_hit_time).filter(time => time).sort((a, b) => {
+      return this.parseTime(a) - this.parseTime(b);
     });
-    
-    const resultPercentages = {};
-    for (const result in resultCounts) {
-      if (resultCounts.hasOwnProperty(result)) {
-        resultPercentages[result] = totalResults > 0 
-          ? ((resultCounts[result] / totalResults) * 100).toFixed(1) 
-          : 0;
+    const secondHitTimes = filteredData.map(item => {
+      if (item.model && item.model.includes('-')) {
+        return item.model.split(' - ')[1];
       }
-    }
-    
-    const numericFields = ['rdr_range', 'odr_range', 'profit', 'loss', 'drawdown'];
-    const averages = {};
-    
-    numericFields.forEach(field => {
-      const validValues = filteredData
-        .map(item => parseFloat(item[field]))
-        .filter(val => !isNaN(val));
-      if (validValues.length > 0) {
-        const sum = validValues.reduce((acc, val) => acc + val, 0);
-        averages[field] = (sum / validValues.length).toFixed(2);
-      } else {
-        averages[field] = 'N/A';
-      }
+      return null;
+    }).filter(time => time && outcomeTypes.includes(time)).sort((a, b) => {
+      return this.parseTime(a) - this.parseTime(b);
     });
-    
+
+    const medianFirstHitTime = firstHitTimes[Math.floor(firstHitTimes.length / 2)] || 'N/A';
+    const medianSecondHitTime = secondHitTimes[Math.floor(secondHitTimes.length / 2)] || 'N/A';
+    const percentile70FirstHitTime = firstHitTimes[Math.floor(firstHitTimes.length * 0.7)] || 'N/A';
+    const percentile70SecondHitTime = secondHitTimes[Math.floor(secondHitTimes.length * 0.7)] || 'N/A';
+
     this.setState({
       probabilityStats: {
         totalCount,
         outcomeCounts,
         outcomePercentages,
-        resultCounts,
-        resultPercentages,
-        averages
+        medianFirstHitTime,
+        medianSecondHitTime,
+        percentile70FirstHitTime,
+        percentile70SecondHitTime,
+        firstHitTimes,
+        secondHitTimes
       }
     });
+  },
+
+  parseTime(timeStr) {
+    if (!timeStr) return 0;
+    const [value, unit] = timeStr.split(' ');
+    const numValue = parseFloat(value);
+    return unit === 'min' ? numValue * 60 : numValue; // Convert minutes to seconds for sorting
   },
 
   handleModelChange(event) {
@@ -428,44 +421,91 @@ const DDRDashboard = React.createClass({
           )
         )
       ),
-      this.state.probabilityStats && this.state.probabilityStats.averages && React.createElement(
+      this.state.probabilityStats && this.state.probabilityStats.firstHitTimes && this.state.probabilityStats.secondHitTimes && React.createElement(
         'div',
         { className: 'mt-6' },
-        React.createElement('h2', { className: 'font-semibold mb-4 text-gray-800 text-xl' }, 'Averages'),
+        React.createElement('h2', { className: 'font-semibold mb-4 text-gray-800 text-xl' }, 'Hit Time Distribution'),
         React.createElement(
           'div',
-          { className: 'grid grid-cols-1 md:grid-cols-3 gap-4' },
-          Object.keys(this.state.probabilityStats.averages).map(field => (
+          { className: 'grid grid-cols-1 md:grid-cols-2 gap-6' },
+          React.createElement(
+            'div',
+            null,
+            React.createElement('h3', { className: 'font-medium text-gray-700 mb-2' }, 'First Hit Time'),
             React.createElement(
-              'div',
-              { key: field, className: 'bg-gray-50 p-4 rounded-md' },
-              React.createElement('p', { className: 'text-sm font-medium text-gray-700' }, field.replace(/_/g, ' ').toUpperCase()),
-              React.createElement('p', { className: 'text-lg font-bold text-gray-800' }, this.state.probabilityStats.averages[field])
-            )
-          ))
-        )
-      ),
-      this.state.probabilityStats && this.state.probabilityStats.outcomePercentages && React.createElement(
-        'div',
-        { className: 'mt-6' },
-        React.createElement('h2', { className: 'font-semibold mb-4 text-gray-800 text-xl' }, 'Probability Visualization'),
-        React.createElement(
-          'div',
-          { className: 'h-64 flex items-end space-x-4 justify-center' },
-          Object.keys(this.state.probabilityStats.outcomePercentages).map(outcome => (
-            React.createElement(
-              'div',
-              { key: outcome, className: 'flex flex-col items-center' },
-              React.createElement('div', {
-                className: 'w-20 rounded-t-lg shadow-inner',
-                style: {
-                  height: this.state.probabilityStats.outcomePercentages[outcome] + 'px',
-                  backgroundColor: outcome === 'Min' ? '#9B59B6' : outcome === 'MinMed' ? '#3498DB' : outcome === 'MedMax' ? '#1ABC9C' : '#F1C40F'
-                }
+              'svg',
+              { width: '400', height: '200', className: 'border border-gray-300 rounded' },
+              this.state.probabilityStats.firstHitTimes.map((time, index) => {
+                const x = index * 20;
+                const y = this.parseTime(time) > 0 ? 200 - (this.parseTime(time) / 60 * 20) : 0; // Normalize to 0-200px
+                return React.createElement('rect', {
+                  key: index,
+                  x: x,
+                  y: y,
+                  width: 18,
+                  height: 200 - y,
+                  fill: '#3498DB'
+                });
               }),
-              React.createElement('p', { className: 'mt-2 text-center' }, outcome + ': ' + this.state.probabilityStats.outcomePercentages[outcome] + '%')
-            )
-          ))
+              this.state.probabilityStats.medianFirstHitTime !== 'N/A' && React.createElement('line', {
+                x1: this.state.probabilityStats.firstHitTimes.indexOf(this.state.probabilityStats.medianFirstHitTime) * 20 + 9,
+                y1: 0,
+                x2: this.state.probabilityStats.firstHitTimes.indexOf(this.state.probabilityStats.medianFirstHitTime) * 20 + 9,
+                y2: 200,
+                stroke: 'white',
+                strokeWidth: 2
+              }),
+              this.state.probabilityStats.percentile70FirstHitTime !== 'N/A' && React.createElement('line', {
+                x1: this.state.probabilityStats.firstHitTimes.indexOf(this.state.probabilityStats.percentile70FirstHitTime) * 20 + 9,
+                y1: 0,
+                x2: this.state.probabilityStats.firstHitTimes.indexOf(this.state.probabilityStats.percentile70FirstHitTime) * 20 + 9,
+                y2: 200,
+                stroke: 'blue',
+                strokeWidth: 2
+              })
+            ),
+            React.createElement('p', { className: 'mt-2 text-gray-600' }, `Median: ${this.state.probabilityStats.medianFirstHitTime}`),
+            React.createElement('p', { className: 'text-gray-600' }, `70th Percentile: ${this.state.probabilityStats.percentile70FirstHitTime}`)
+          ),
+          React.createElement(
+            'div',
+            null,
+            React.createElement('h3', { className: 'font-medium text-gray-700 mb-2' }, 'Second Hit Time'),
+            React.createElement(
+              'svg',
+              { width: '400', height: '200', className: 'border border-gray-300 rounded' },
+              this.state.probabilityStats.secondHitTimes.map((time, index) => {
+                const x = index * 20;
+                const y = this.parseTime(time) > 0 ? 200 - (this.parseTime(time) / 60 * 20) : 0; // Normalize to 0-200px
+                return React.createElement('rect', {
+                  key: index,
+                  x: x,
+                  y: y,
+                  width: 18,
+                  height: 200 - y,
+                  fill: '#E74C3C'
+                });
+              }),
+              this.state.probabilityStats.medianSecondHitTime !== 'N/A' && React.createElement('line', {
+                x1: this.state.probabilityStats.secondHitTimes.indexOf(this.state.probabilityStats.medianSecondHitTime) * 20 + 9,
+                y1: 0,
+                x2: this.state.probabilityStats.secondHitTimes.indexOf(this.state.probabilityStats.medianSecondHitTime) * 20 + 9,
+                y2: 200,
+                stroke: 'white',
+                strokeWidth: 2
+              }),
+              this.state.probabilityStats.percentile70SecondHitTime !== 'N/A' && React.createElement('line', {
+                x1: this.state.probabilityStats.secondHitTimes.indexOf(this.state.probabilityStats.percentile70SecondHitTime) * 20 + 9,
+                y1: 0,
+                x2: this.state.probabilityStats.secondHitTimes.indexOf(this.state.probabilityStats.percentile70SecondHitTime) * 20 + 9,
+                y2: 200,
+                stroke: 'blue',
+                strokeWidth: 2
+              })
+            ),
+            React.createElement('p', { className: 'mt-2 text-gray-600' }, `Median: ${this.state.probabilityStats.medianSecondHitTime}`),
+            React.createElement('p', { className: 'text-gray-600' }, `70th Percentile: ${this.state.probabilityStats.percentile70SecondHitTime}`)
+          )
         )
       ),
       React.createElement(
