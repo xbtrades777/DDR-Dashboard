@@ -242,6 +242,56 @@ const DDRDashboard = () => {
 
   // Calculate time distributions for first and second hit times
   const calculateTimeDistributions = (filteredData) => {
+    // Check if required columns exist
+    const sampleItem = filteredData[0] || {};
+    const hasFirstHitTime = 'first_hit_time_15_min' in sampleItem || 'first_hit_time_30_min' in sampleItem || 'first_hit_time_60_min' in sampleItem;
+    const hasSecondHitTime = 'second_hit_time_15_min' in sampleItem || 'second_hit_time_30_min' in sampleItem || 'second_hit_time_60_min' in sampleItem;
+    
+    console.log('Available columns for time distribution:', Object.keys(sampleItem));
+    console.log('Has first hit time columns:', hasFirstHitTime);
+    console.log('Has second hit time columns:', hasSecondHitTime);
+    
+    // If we don't have the required columns, use a simpler approach
+    if (!hasFirstHitTime || !hasSecondHitTime) {
+      // Use the session information (ODR, Trans, RDR) to approximate time buckets
+      const timeCategories = ['ODR', 'Trans', 'RDR'];
+      const firstHitCounts = { 'ODR': 0, 'Trans': 0, 'RDR': 0 };
+      const secondHitCounts = { 'ODR': 0, 'Trans': 0, 'RDR': 0 };
+      
+      filteredData.forEach(item => {
+        // Process first hit session
+        if (item.first_hit_time) {
+          const session = item.first_hit_time.includes('ODR') ? 'ODR' : 
+                         item.first_hit_time.includes('Trans') ? 'Trans' : 
+                         item.first_hit_time.includes('RDR') ? 'RDR' : null;
+          
+          if (session) firstHitCounts[session]++;
+        }
+        
+        // Process second hit session
+        if (item.second_hit_time) {
+          const session = item.second_hit_time.includes('ODR') ? 'ODR' : 
+                         item.second_hit_time.includes('Trans') ? 'Trans' : 
+                         item.second_hit_time.includes('RDR') ? 'RDR' : null;
+          
+          if (session) secondHitCounts[session]++;
+        }
+      });
+      
+      // Set the simplified distributions
+      setFirstHitTimeDistribution({
+        labels: timeCategories,
+        data: timeCategories.map(cat => firstHitCounts[cat])
+      });
+      
+      setSecondHitTimeDistribution({
+        labels: timeCategories,
+        data: timeCategories.map(cat => secondHitCounts[cat])
+      });
+      
+      return;
+    }
+    
     // Generate all time blocks from 03:00 to 15:55 in 15-min intervals
     const timeBlocks = [];
     for (let hour = 3; hour <= 15; hour++) {
@@ -414,6 +464,12 @@ const DDRDashboard = () => {
   // Function to render time distribution chart using Chart.js
   const renderTimeDistributionChart = (canvasId, distributionData, title, color) => {
     if (!distributionData || !document.getElementById(canvasId)) return;
+    
+    // Check if Chart.js is loaded
+    if (typeof Chart === 'undefined') {
+      console.error('Chart.js is not loaded. Please include Chart.js library.');
+      return;
+    }
 
     const ctx = document.getElementById(canvasId).getContext('2d');
     
@@ -527,6 +583,9 @@ const DDRDashboard = () => {
     <div className="p-6 max-w-4xl mx-auto bg-white rounded-lg shadow-lg">
       <h1 className="text-2xl font-bold mb-6 text-gray-800">DDR Probability Dashboard</h1>
       
+      {/* Add Chart.js library */}
+      <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* START Model Selection */}
         <div className="bg-gray-50 p-4 rounded-md">
@@ -625,6 +684,7 @@ const DDRDashboard = () => {
         
         {/* First Hit Time Distribution */}
         <div className="bg-white p-4 rounded-lg shadow border border-gray-200 mb-6">
+          <h3 className="font-medium text-gray-700 mb-3">First Hit Time Distribution</h3>
           <div style={{ height: "300px" }}>
             <canvas id="firstHitTimeChart"></canvas>
           </div>
@@ -632,6 +692,7 @@ const DDRDashboard = () => {
         
         {/* Second Hit Time Distribution */}
         <div className="bg-white p-4 rounded-lg shadow border border-gray-200 mb-6">
+          <h3 className="font-medium text-gray-700 mb-3">Second Hit Time Distribution</h3>
           <div style={{ height: "300px" }}>
             <canvas id="secondHitTimeChart"></canvas>
           </div>
