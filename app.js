@@ -621,13 +621,13 @@ const DDRDashboard = () => {
   
   // Handle color selection change
   const handleColorChange = (event) => {
-    setSelectedColor(event.target.value);
-    updateDatasetCount();
-  };
-  
-  // Handle percentage selection change
-  const handlePercentageChange = (event) => {
-    setSelectedPercentage(event.target.value);
+    if (showColorSelection) {
+      setSelectedColor(event.target.value);
+      setSelectedPercentage('');
+    } else if (showPercentage) {
+      setSelectedPercentage(event.target.value);
+      setSelectedColor('');
+    }
     updateDatasetCount();
   };
   
@@ -749,7 +749,7 @@ const DDRDashboard = () => {
                   <tr>
                     <th className="py-2 px-4 border-b text-left">Time Block</th>
                     <th className="py-2 px-4 border-b text-left">Occurrences</th>
-                    <th className="py-2 px-4 border-b text-left">Visual</th>
+                    <th className="py-2 px-4 border-b text-left">Distribution %</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -814,7 +814,7 @@ const DDRDashboard = () => {
                   <tr>
                     <th className="py-2 px-4 border-b text-left">Time Block</th>
                     <th className="py-2 px-4 border-b text-left">Occurrences</th>
-                    <th className="py-2 px-4 border-b text-left">Visual</th>
+                    <th className="py-2 px-4 border-b text-left">Distribution %</th>
                   </tr>
                 </thead>
                 <tbody>
