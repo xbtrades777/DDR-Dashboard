@@ -426,6 +426,30 @@ const DDRDashboard = () => {
     // Check if Chart.js is loaded
     if (typeof Chart === 'undefined') {
       console.error('Chart.js is not loaded. Please include Chart.js library.');
+      // Add a fallback visualization method if Chart.js is not available
+      const container = document.getElementById(canvasId).parentNode;
+      const message = document.createElement('div');
+      message.className = 'text-center text-red-500 my-4';
+      message.textContent = 'Chart.js library not loaded. Displaying data in text format:';
+      
+      const dataDisplay = document.createElement('div');
+      dataDisplay.className = 'text-sm mt-2 overflow-auto max-h-48';
+      
+      // Create a simple text representation of the data
+      let textData = '';
+      distributionData.labels.forEach((label, index) => {
+        if (distributionData.data[index] > 0) {
+          textData += `${label}: ${distributionData.data[index]} occurrences\n`;
+        }
+      });
+      
+      dataDisplay.innerText = textData || 'No data to display';
+      
+      // Clear container and append the message and data display
+      container.innerHTML = '';
+      container.appendChild(message);
+      container.appendChild(dataDisplay);
+      
       return;
     }
 
@@ -488,24 +512,49 @@ const DDRDashboard = () => {
     });
   };
 
-  // Effect to render time distribution charts when data changes
   useEffect(() => {
-    if (startTimeDistribution) {
-      renderTimeDistributionChart(
-        'startTimeChart', 
-        startTimeDistribution, 
-        'Start Time Distribution (Column H)', 
-        'rgba(54, 162, 235, 0.7)'
-      );
-    }
-    
-    if (endTimeDistribution) {
-      renderTimeDistributionChart(
-        'endTimeChart', 
-        endTimeDistribution, 
-        'End Time Distribution (Column J)', 
-        'rgba(255, 99, 132, 0.7)'
-      );
+    // This ensures the Chart.js script is loaded properly
+    const loadChartJS = () => {
+      return new Promise((resolve, reject) => {
+        if (window.Chart) {
+          resolve(window.Chart);
+          return;
+        }
+        
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js';
+        script.crossOrigin = 'anonymous';
+        script.onload = () => resolve(window.Chart);
+        script.onerror = () => reject(new Error('Failed to load Chart.js'));
+        document.head.appendChild(script);
+      });
+    };
+
+    if (startTimeDistribution || endTimeDistribution) {
+      loadChartJS()
+        .then(() => {
+          console.log('Chart.js loaded successfully');
+          if (startTimeDistribution) {
+            renderTimeDistributionChart(
+              'startTimeChart', 
+              startTimeDistribution, 
+              'Start Time Distribution (Column H)', 
+              'rgba(54, 162, 235, 0.7)'
+            );
+          }
+          
+          if (endTimeDistribution) {
+            renderTimeDistributionChart(
+              'endTimeChart', 
+              endTimeDistribution, 
+              'End Time Distribution (Column J)', 
+              'rgba(255, 99, 132, 0.7)'
+            );
+          }
+        })
+        .catch(error => {
+          console.error('Error loading Chart.js:', error);
+        });
     }
   }, [startTimeDistribution, endTimeDistribution]);
 
@@ -541,8 +590,8 @@ const DDRDashboard = () => {
     <div className="p-6 max-w-4xl mx-auto bg-white rounded-lg shadow-lg">
       <h1 className="text-2xl font-bold mb-6 text-gray-800">DDR Probability Dashboard</h1>
       
-      {/* Add Chart.js library */}
-      <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+      {/* Add Chart.js library properly */}
+      <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js" crossOrigin="anonymous"></script>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* START Model Selection */}
@@ -643,16 +692,26 @@ const DDRDashboard = () => {
         {/* Start Time Distribution (Column H) */}
         <div className="bg-white p-4 rounded-lg shadow border border-gray-200 mb-6">
           <h3 className="font-medium text-gray-700 mb-3">Start Time Distribution (Column H)</h3>
-          <div style={{ height: "300px" }}>
+          <div style={{ height: "300px" }} className="relative">
             <canvas id="startTimeChart"></canvas>
+            {!startTimeDistribution && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <p className="text-gray-500">Select criteria to view time distribution</p>
+              </div>
+            )}
           </div>
         </div>
         
         {/* End Time Distribution (Column J) */}
         <div className="bg-white p-4 rounded-lg shadow border border-gray-200 mb-6">
           <h3 className="font-medium text-gray-700 mb-3">End Time Distribution (Column J)</h3>
-          <div style={{ height: "300px" }}>
+          <div style={{ height: "300px" }} className="relative">
             <canvas id="endTimeChart"></canvas>
+            {!endTimeDistribution && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <p className="text-gray-500">Select criteria to view time distribution</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
