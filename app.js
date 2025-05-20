@@ -644,14 +644,14 @@ const DDRDashboard = () => {
       {/* Add Chart.js library properly */}
       <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js" crossOrigin="anonymous"></script>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* START Model Selection */}
-        <div className="bg-gray-50 p-4 rounded-md">
-          <h2 className="font-semibold mb-2 text-gray-700">First Hit Pattern</h2>
+        <div className="bg-gray-50 p-5 rounded-md">
+          <h2 className="font-semibold mb-3 text-gray-700">First Hit Pattern</h2>
           <select 
             value={selectedModel}
             onChange={handleModelChange}
-            className="w-full p-2 border border-gray-300 rounded-md"
+            className="w-full p-3 border border-gray-300 rounded-md text-base"
           >
             <option value="">Select pattern</option>
             {allModels.map((model) => (
@@ -661,71 +661,54 @@ const DDRDashboard = () => {
         </div>
         
         {/* High/Low Selection */}
-        {selectedModel && (
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h2 className="font-semibold mb-2 text-gray-700">First Hit Time</h2>
-            <select 
-              value={selectedHighLow}
-              onChange={handleHighLowChange}
-              className="w-full p-2 border border-gray-300 rounded-md"
-            >
-              <option value="">Select time</option>
-              {highLowOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div className="bg-gray-50 p-5 rounded-md">
+          <h2 className="font-semibold mb-3 text-gray-700">First Hit Time</h2>
+          <select 
+            value={selectedHighLow}
+            onChange={handleHighLowChange}
+            className="w-full p-3 border border-gray-300 rounded-md text-base"
+            disabled={!selectedModel}
+          >
+            <option value="">Select time</option>
+            {highLowOptions.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        </div>
         
-        {/* Color Selection - Only shown when the first part is NOT Min */}
-        {showColorSelection && (
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h2 className="font-semibold mb-2 text-gray-700">Color</h2>
-            <select 
-              value={selectedColor}
-              onChange={handleColorChange}
-              className="w-full p-2 border border-gray-300 rounded-md"
-            >
-              <option value="">Select color</option>
-              {colorOptions.map((color) => (
-                <option key={color} value={color}>{color}</option>
-              ))}
-            </select>
-          </div>
-        )}
-        
-        {/* Percentage Selection - Only shown for Min-* models */}
-        {showPercentage && (
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h2 className="font-semibold mb-2 text-gray-700">% Color</h2>
-            <select 
-              value={selectedPercentage}
-              onChange={handlePercentageChange}
-              className="w-full p-2 border border-gray-300 rounded-md"
-            >
-              <option value="">Select percentage</option>
-              {percentageOptions.map((percentage) => (
-                <option key={percentage} value={percentage}>{percentage}</option>
-              ))}
-            </select>
-          </div>
-        )}
+        {/* Color Selection */}
+        <div className="bg-gray-50 p-5 rounded-md">
+          <h2 className="font-semibold mb-3 text-gray-700">Color</h2>
+          <select 
+            value={selectedColor}
+            onChange={handleColorChange}
+            className="w-full p-3 border border-gray-300 rounded-md text-base"
+            disabled={!showColorSelection && !showPercentage}
+          >
+            <option value="">Select color</option>
+            {showColorSelection && colorOptions.map((color) => (
+              <option key={color} value={color}>{color}</option>
+            ))}
+            {showPercentage && percentageOptions.map((percentage) => (
+              <option key={percentage} value={percentage}>{percentage}</option>
+            ))}
+          </select>
+        </div>
         
         {/* Time Bucket Selection */}
-        {selectedModel && (
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h2 className="font-semibold mb-2 text-gray-700">Time Bucket</h2>
-            <select 
-              value={selectedTimeBucket}
-              onChange={handleTimeBucketChange}
-              className="w-full p-2 border border-gray-300 rounded-md"
-            >
-              {timeBucketOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div className="bg-gray-50 p-5 rounded-md">
+          <h2 className="font-semibold mb-3 text-gray-700">Time Bucket</h2>
+          <select 
+            value={selectedTimeBucket}
+            onChange={handleTimeBucketChange}
+            className="w-full p-3 border border-gray-300 rounded-md text-base"
+            disabled={!selectedModel}
+          >
+            {timeBucketOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
       
       {/* Loading and Error States */}
