@@ -709,6 +709,14 @@ const DDRDashboard = () => {
                     const count = startTimeDistribution.data[index];
                     // Only show time blocks with data
                     if (count > 0) {
+                      // Calculate the total occurrences
+                      const totalOccurrences = startTimeDistribution.data.reduce((acc, curr) => acc + curr, 0);
+                      
+                      // Calculate percentage of total occurrences (not max value)
+                      const percentageOfTotal = totalOccurrences > 0 
+                        ? Math.round((count / totalOccurrences) * 100) 
+                        : 0;
+                      
                       // Calculate width percentage for the visual bar (max 100%)
                       const maxCount = Math.max(...startTimeDistribution.data);
                       const widthPercentage = (count / maxCount) * 100;
@@ -723,7 +731,7 @@ const DDRDashboard = () => {
                                 className="bg-blue-500 h-4 rounded"
                                 style={{ width: `${widthPercentage}%` }}
                               ></div>
-                              <span className="ml-2 text-gray-600">{Math.round(widthPercentage)}%</span>
+                              <span className="ml-2 text-gray-600">{percentageOfTotal}% of total</span>
                             </div>
                           </td>
                         </tr>
@@ -732,6 +740,13 @@ const DDRDashboard = () => {
                     return null;
                   }).filter(Boolean)}
                 </tbody>
+                <tfoot className="sticky bottom-0 bg-white border-t">
+                  <tr>
+                    <td colSpan="3" className="py-2 px-4 text-right text-gray-700">
+                      Total Occurrences: {startTimeDistribution.data.reduce((acc, curr) => acc + curr, 0)}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
@@ -759,6 +774,14 @@ const DDRDashboard = () => {
                     const count = endTimeDistribution.data[index];
                     // Only show time blocks with data
                     if (count > 0) {
+                      // Calculate the total occurrences
+                      const totalOccurrences = endTimeDistribution.data.reduce((acc, curr) => acc + curr, 0);
+                      
+                      // Calculate percentage of total occurrences (not max value)
+                      const percentageOfTotal = totalOccurrences > 0 
+                        ? Math.round((count / totalOccurrences) * 100) 
+                        : 0;
+                      
                       // Calculate width percentage for the visual bar (max 100%)
                       const maxCount = Math.max(...endTimeDistribution.data);
                       const widthPercentage = (count / maxCount) * 100;
@@ -773,7 +796,7 @@ const DDRDashboard = () => {
                                 className="bg-red-500 h-4 rounded"
                                 style={{ width: `${widthPercentage}%` }}
                               ></div>
-                              <span className="ml-2 text-gray-600">{Math.round(widthPercentage)}%</span>
+                              <span className="ml-2 text-gray-600">{percentageOfTotal}% of total</span>
                             </div>
                           </td>
                         </tr>
@@ -782,6 +805,13 @@ const DDRDashboard = () => {
                     return null;
                   }).filter(Boolean)}
                 </tbody>
+                <tfoot className="sticky bottom-0 bg-white border-t">
+                  <tr>
+                    <td colSpan="3" className="py-2 px-4 text-right text-gray-700">
+                      Total Occurrences: {endTimeDistribution.data.reduce((acc, curr) => acc + curr, 0)}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
