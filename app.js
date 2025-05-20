@@ -959,16 +959,16 @@ const DDRDashboard = () => {
             </thead>
             <tbody>
               {sheetData.length > 0 ? (
-                <>
-                  <tr>
+                [
+                  <tr key="start-time">
                     <td className="py-2 px-4 border-b">Start Time (Column H)</td>
                     <td className="py-2 px-4 border-b">{sheetData[0].start_time || 'N/A'}</td>
-                  </tr>
-                  <tr>
+                  </tr>,
+                  <tr key="end-time">
                     <td className="py-2 px-4 border-b">End Time (Column J)</td>
                     <td className="py-2 px-4 border-b">{sheetData[0].end_time || 'N/A'}</td>
                   </tr>
-                </>
+                ]
               ) : (
                 <tr>
                   <td colSpan="2" className="py-2 px-4 text-center">No data available</td>
