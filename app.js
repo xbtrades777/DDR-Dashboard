@@ -53,8 +53,8 @@ const DDRDashboard = () => {
   const [probabilityStats, setProbabilityStats] = useState(null);
 
   // State for time distribution charts
-  const [firstHitTimeDistribution, setFirstHitTimeDistribution] = useState(null);
-  const [secondHitTimeDistribution, setSecondHitTimeDistribution] = useState(null);
+  const [startTimeDistribution, setStartTimeDistribution] = useState(null);
+  const [endTimeDistribution, setEndTimeDistribution] = useState(null);
 
   // State for API connection parameters
   const [apiKey, setApiKey] = useState('AIzaSyBB5_LHGAX_tirA23TzDEesMJhm_Srrs9s');
@@ -94,21 +94,21 @@ const DDRDashboard = () => {
     updateDatasetCount();
   }, [selectedModel, selectedHighLow, selectedColor, selectedPercentage, sheetData]);
 
-  // Function to parse time strings to get hour value
-  const parseTimeToTimeBlock = (timeStr) => {
+  // Function to parse time strings into 15-minute buckets
+  const parseTimeTo15MinBucket = (timeStr) => {
     if (!timeStr) return null;
     
-    // Extract time part from strings like "Low ODR 3:30"
+    // Extract time part from strings like "3:30" or "03:30"
     const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
     if (!timeMatch) return null;
     
     const hour = parseInt(timeMatch[1], 10);
     const minute = parseInt(timeMatch[2], 10);
     
-    // Create time block in 15-minute intervals
-    const minuteBlock = Math.floor(minute / 15) * 15;
+    // Create time bucket in 15-minute intervals (0, 15, 30, 45)
+    const minuteBucket = Math.floor(minute / 15) * 15;
     const formattedHour = hour.toString().padStart(2, '0');
-    const formattedMinute = minuteBlock.toString().padStart(2, '0');
+    const formattedMinute = minuteBucket.toString().padStart(2, '0');
     
     return `${formattedHour}:${formattedMinute}`;
   };
@@ -181,8 +181,8 @@ const DDRDashboard = () => {
     if (!selectedModel || sheetData.length === 0) {
       setDatasetCount(0);
       setProbabilityStats(null);
-      setFirstHitTimeDistribution(null);
-      setSecondHitTimeDistribution(null);
+      setStartTimeDistribution(null);
+      setEndTimeDistribution(null);
       return;
     }
     
@@ -235,63 +235,13 @@ const DDRDashboard = () => {
       calculateTimeDistributions(matchingData);
     } else {
       setProbabilityStats(null);
-      setFirstHitTimeDistribution(null);
-      setSecondHitTimeDistribution(null);
+      setStartTimeDistribution(null);
+      setEndTimeDistribution(null);
     }
   };
 
-  // Calculate time distributions for first and second hit times
+  // Calculate time distributions for start and end times
   const calculateTimeDistributions = (filteredData) => {
-    // Check if required columns exist
-    const sampleItem = filteredData[0] || {};
-    const hasFirstHitTime = 'first_hit_time_15_min' in sampleItem || 'first_hit_time_30_min' in sampleItem || 'first_hit_time_60_min' in sampleItem;
-    const hasSecondHitTime = 'second_hit_time_15_min' in sampleItem || 'second_hit_time_30_min' in sampleItem || 'second_hit_time_60_min' in sampleItem;
-    
-    console.log('Available columns for time distribution:', Object.keys(sampleItem));
-    console.log('Has first hit time columns:', hasFirstHitTime);
-    console.log('Has second hit time columns:', hasSecondHitTime);
-    
-    // If we don't have the required columns, use a simpler approach
-    if (!hasFirstHitTime || !hasSecondHitTime) {
-      // Use the session information (ODR, Trans, RDR) to approximate time buckets
-      const timeCategories = ['ODR', 'Trans', 'RDR'];
-      const firstHitCounts = { 'ODR': 0, 'Trans': 0, 'RDR': 0 };
-      const secondHitCounts = { 'ODR': 0, 'Trans': 0, 'RDR': 0 };
-      
-      filteredData.forEach(item => {
-        // Process first hit session
-        if (item.first_hit_time) {
-          const session = item.first_hit_time.includes('ODR') ? 'ODR' : 
-                         item.first_hit_time.includes('Trans') ? 'Trans' : 
-                         item.first_hit_time.includes('RDR') ? 'RDR' : null;
-          
-          if (session) firstHitCounts[session]++;
-        }
-        
-        // Process second hit session
-        if (item.second_hit_time) {
-          const session = item.second_hit_time.includes('ODR') ? 'ODR' : 
-                         item.second_hit_time.includes('Trans') ? 'Trans' : 
-                         item.second_hit_time.includes('RDR') ? 'RDR' : null;
-          
-          if (session) secondHitCounts[session]++;
-        }
-      });
-      
-      // Set the simplified distributions
-      setFirstHitTimeDistribution({
-        labels: timeCategories,
-        data: timeCategories.map(cat => firstHitCounts[cat])
-      });
-      
-      setSecondHitTimeDistribution({
-        labels: timeCategories,
-        data: timeCategories.map(cat => secondHitCounts[cat])
-      });
-      
-      return;
-    }
-    
     // Generate all time blocks from 03:00 to 15:55 in 15-min intervals
     const timeBlocks = [];
     for (let hour = 3; hour <= 15; hour++) {
@@ -302,46 +252,54 @@ const DDRDashboard = () => {
       }
     }
     
-    // Initialize counters for first hit times
-    const firstHitCounts = {};
+    // Initialize counters for start times (Column H)
+    const startTimeCounts = {};
     timeBlocks.forEach(block => {
-      firstHitCounts[block] = 0;
+      startTimeCounts[block] = 0;
     });
     
-    // Initialize counters for second hit times
-    const secondHitCounts = {};
+    // Initialize counters for end times (Column J)
+    const endTimeCounts = {};
     timeBlocks.forEach(block => {
-      secondHitCounts[block] = 0;
+      endTimeCounts[block] = 0;
     });
 
     // Count occurrences of each time block
     filteredData.forEach(item => {
-      // Process first hit time
-      const firstHitTimeBlock = parseTimeToTimeBlock(item.first_hit_time_exact);
-      if (firstHitTimeBlock && firstHitCounts.hasOwnProperty(firstHitTimeBlock)) {
-        firstHitCounts[firstHitTimeBlock]++;
+      // Process start time (Column H)
+      if (item.start_time) {
+        const startTimeBlock = parseTimeTo15MinBucket(item.start_time);
+        if (startTimeBlock && startTimeCounts.hasOwnProperty(startTimeBlock)) {
+          startTimeCounts[startTimeBlock]++;
+        }
       }
       
-      // Process second hit time
-      const secondHitTimeBlock = parseTimeToTimeBlock(item.second_hit_time_exact);
-      if (secondHitTimeBlock && secondHitCounts.hasOwnProperty(secondHitTimeBlock)) {
-        secondHitCounts[secondHitTimeBlock]++;
+      // Process end time (Column J)
+      if (item.end_time) {
+        const endTimeBlock = parseTimeTo15MinBucket(item.end_time);
+        if (endTimeBlock && endTimeCounts.hasOwnProperty(endTimeBlock)) {
+          endTimeCounts[endTimeBlock]++;
+        }
       }
     });
     
     // Convert to arrays for Chart.js
-    const firstHitDistribution = {
+    const startTimeDistribution = {
       labels: timeBlocks,
-      data: timeBlocks.map(block => firstHitCounts[block])
+      data: timeBlocks.map(block => startTimeCounts[block])
     };
     
-    const secondHitDistribution = {
+    const endTimeDistribution = {
       labels: timeBlocks,
-      data: timeBlocks.map(block => secondHitCounts[block])
+      data: timeBlocks.map(block => endTimeCounts[block])
     };
     
-    setFirstHitTimeDistribution(firstHitDistribution);
-    setSecondHitTimeDistribution(secondHitDistribution);
+    setStartTimeDistribution(startTimeDistribution);
+    setEndTimeDistribution(endTimeDistribution);
+    
+    // Log the distributions for debugging
+    console.log('Start Time Distribution:', startTimeDistribution);
+    console.log('End Time Distribution:', endTimeDistribution);
   };
 
   // Calculate probability statistics
@@ -532,24 +490,24 @@ const DDRDashboard = () => {
 
   // Effect to render time distribution charts when data changes
   useEffect(() => {
-    if (firstHitTimeDistribution) {
+    if (startTimeDistribution) {
       renderTimeDistributionChart(
-        'firstHitTimeChart', 
-        firstHitTimeDistribution, 
-        'First Hit Time Distribution', 
+        'startTimeChart', 
+        startTimeDistribution, 
+        'Start Time Distribution (Column H)', 
         'rgba(54, 162, 235, 0.7)'
       );
     }
     
-    if (secondHitTimeDistribution) {
+    if (endTimeDistribution) {
       renderTimeDistributionChart(
-        'secondHitTimeChart', 
-        secondHitTimeDistribution, 
-        'Second Hit Time Distribution', 
+        'endTimeChart', 
+        endTimeDistribution, 
+        'End Time Distribution (Column J)', 
         'rgba(255, 99, 132, 0.7)'
       );
     }
-  }, [firstHitTimeDistribution, secondHitTimeDistribution]);
+  }, [startTimeDistribution, endTimeDistribution]);
 
   // Handle model selection change
   const handleModelChange = (event) => {
@@ -682,19 +640,19 @@ const DDRDashboard = () => {
       <div className="mt-6">
         <h2 className="font-semibold mb-4 text-gray-800 text-xl">Time Distribution Analysis</h2>
         
-        {/* First Hit Time Distribution */}
+        {/* Start Time Distribution (Column H) */}
         <div className="bg-white p-4 rounded-lg shadow border border-gray-200 mb-6">
-          <h3 className="font-medium text-gray-700 mb-3">First Hit Time Distribution</h3>
+          <h3 className="font-medium text-gray-700 mb-3">Start Time Distribution (Column H)</h3>
           <div style={{ height: "300px" }}>
-            <canvas id="firstHitTimeChart"></canvas>
+            <canvas id="startTimeChart"></canvas>
           </div>
         </div>
         
-        {/* Second Hit Time Distribution */}
+        {/* End Time Distribution (Column J) */}
         <div className="bg-white p-4 rounded-lg shadow border border-gray-200 mb-6">
-          <h3 className="font-medium text-gray-700 mb-3">Second Hit Time Distribution</h3>
+          <h3 className="font-medium text-gray-700 mb-3">End Time Distribution (Column J)</h3>
           <div style={{ height: "300px" }}>
-            <canvas id="secondHitTimeChart"></canvas>
+            <canvas id="endTimeChart"></canvas>
           </div>
         </div>
       </div>
@@ -986,6 +944,45 @@ const DDRDashboard = () => {
           <br />
           For API access, set the sheet to "Anyone with the link can view" or more permissive.
         </p>
+      </div>
+
+      {/* Debug Info Section */}
+      <div className="mt-8 p-4 bg-gray-50 rounded-md">
+        <h2 className="font-semibold mb-4 text-gray-700">Debug Information</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white border border-gray-200">
+            <thead>
+              <tr>
+                <th className="py-2 px-4 border-b">Column</th>
+                <th className="py-2 px-4 border-b">Sample Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sheetData.length > 0 && (
+                <>
+                  <tr>
+                    <td className="py-2 px-4 border-b">Start Time (Column H)</td>
+                    <td className="py-2 px-4 border-b">{sheetData[0].start_time || 'N/A'}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 px-4 border-b">End Time (Column J)</td>
+                    <td className="py-2 px-4 border-b">{sheetData[0].end_time || 'N/A'}</td>
+                  </tr>
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-4">
+          <h3 className="font-medium text-gray-700 mb-2">Column Mapping</h3>
+          <p className="text-sm text-gray-600">
+            Ensure your Google Sheet has the following columns properly labeled:
+          </p>
+          <ul className="list-disc list-inside text-sm text-gray-600 mt-2">
+            <li>Column H should be labeled "Start Time" with 5-minute interval times</li>
+            <li>Column J should be labeled "End Time" with 5-minute interval times</li>
+          </ul>
+        </div>
       </div>
     </div>
   );
