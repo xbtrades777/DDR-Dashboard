@@ -1092,7 +1092,7 @@ const DDRDashboard = () => {
             <p><strong>Percentage:</strong> {selectedPercentage || 'None'}</p>
           )}
           <p><strong>Time Bucket:</strong> {selectedTimeBucket ? 
-            timeBucketOptions.find(opt => opt.value === selectedTimeBucket)?.label : 
+            (timeBucketOptions.find(opt => opt.value === selectedTimeBucket) || {label: 'All Times'}).label : 
             'All Times'}</p>
         </div>
       )}
