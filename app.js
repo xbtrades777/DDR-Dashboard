@@ -35,12 +35,46 @@ const DDRDashboard = () => {
     'Red 0 - 50%',
     'Red 50 - 100%'
   ];
+  
+  // Generate time bucket options
+  const generateTimeBuckets = () => {
+    const buckets = [{ label: 'All Times', value: '' }]; // Default option
+    
+    for (let hour = 3; hour <= 15; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const formattedHour = hour.toString().padStart(2, '0');
+        const formattedMinute = minute.toString().padStart(2, '0');
+        const startTime = `${formattedHour}:${formattedMinute}`;
+        
+        // Calculate end time (15 minutes later)
+        let endHour = hour;
+        let endMinute = minute + 15;
+        
+        if (endMinute >= 60) {
+          endHour += 1;
+          endMinute = 0;
+        }
+        
+        const formattedEndHour = endHour.toString().padStart(2, '0');
+        const formattedEndMinute = endMinute.toString().padStart(2, '0');
+        const endTime = `${formattedEndHour}:${formattedEndMinute}`;
+        
+        const label = `${startTime} - ${endTime}`;
+        buckets.push({ label, value: startTime });
+      }
+    }
+    
+    return buckets;
+  };
+  
+  const timeBucketOptions = generateTimeBuckets();
 
   // State for selections
   const [selectedModel, setSelectedModel] = useState('');
   const [selectedHighLow, setSelectedHighLow] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedPercentage, setSelectedPercentage] = useState('');
+  const [selectedTimeBucket, setSelectedTimeBucket] = useState('');
   const [showPercentage, setShowPercentage] = useState(false);
   
   // Dataset count
@@ -92,7 +126,7 @@ const DDRDashboard = () => {
   // Update dataset count when selections change
   useEffect(() => {
     updateDatasetCount();
-  }, [selectedModel, selectedHighLow, selectedColor, selectedPercentage, sheetData]);
+  }, [selectedModel, selectedHighLow, selectedColor, selectedPercentage, selectedTimeBucket, sheetData]);
 
   // Function to parse time strings into 15-minute buckets
   const parseTimeTo15MinBucket = (timeStr) => {
@@ -189,6 +223,7 @@ const DDRDashboard = () => {
     // Create criteria object - now we look for models that START with the selected value
     console.log('Filtering with first hit:', selectedModel);
     console.log('Selected percentage:', selectedPercentage);
+    console.log('Selected time bucket:', selectedTimeBucket);
     
     // Log a sample item to check the field names
     if (sheetData.length > 0) {
@@ -219,6 +254,14 @@ const DDRDashboard = () => {
       // Check First Hit Time match
       if (selectedHighLow && item.first_hit_time !== selectedHighLow) {
         return false;
+      }
+      
+      // Check time bucket match if selected
+      if (selectedTimeBucket && item.start_time) {
+        const timeBlock = parseTimeTo15MinBucket(item.start_time);
+        if (timeBlock !== selectedTimeBucket) {
+          return false;
+        }
       }
       
       return true;
@@ -587,6 +630,12 @@ const DDRDashboard = () => {
     setSelectedPercentage(event.target.value);
     updateDatasetCount();
   };
+  
+  // Handle time bucket selection change
+  const handleTimeBucketChange = (event) => {
+    setSelectedTimeBucket(event.target.value);
+    updateDatasetCount();
+  };
 
   return (
     <div className="p-6 max-w-4xl mx-auto bg-white rounded-lg shadow-lg">
@@ -595,7 +644,7 @@ const DDRDashboard = () => {
       {/* Add Chart.js library properly */}
       <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js" crossOrigin="anonymous"></script>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {/* START Model Selection */}
         <div className="bg-gray-50 p-4 rounded-md">
           <h2 className="font-semibold mb-2 text-gray-700">First Hit Pattern</h2>
@@ -657,6 +706,22 @@ const DDRDashboard = () => {
               <option value="">Select percentage</option>
               {percentageOptions.map((percentage) => (
                 <option key={percentage} value={percentage}>{percentage}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        
+        {/* Time Bucket Selection */}
+        {selectedModel && (
+          <div className="bg-gray-50 p-4 rounded-md">
+            <h2 className="font-semibold mb-2 text-gray-700">Time Bucket</h2>
+            <select 
+              value={selectedTimeBucket}
+              onChange={handleTimeBucketChange}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            >
+              {timeBucketOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
           </div>
@@ -1026,6 +1091,9 @@ const DDRDashboard = () => {
           {showPercentage && (
             <p><strong>Percentage:</strong> {selectedPercentage || 'None'}</p>
           )}
+          <p><strong>Time Bucket:</strong> {selectedTimeBucket ? 
+            timeBucketOptions.find(opt => opt.value === selectedTimeBucket)?.label : 
+            'All Times'}</p>
         </div>
       )}
 
