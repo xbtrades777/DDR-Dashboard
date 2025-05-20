@@ -286,12 +286,14 @@ const DDRDashboard = () => {
     // Convert to arrays for Chart.js
     const startTimeDistribution = {
       labels: timeBlocks,
-      data: timeBlocks.map(block => startTimeCounts[block])
+      data: timeBlocks.map(block => startTimeCounts[block]),
+      counts: startTimeCounts
     };
     
     const endTimeDistribution = {
       labels: timeBlocks,
-      data: timeBlocks.map(block => endTimeCounts[block])
+      data: timeBlocks.map(block => endTimeCounts[block]),
+      counts: endTimeCounts
     };
     
     setStartTimeDistribution(startTimeDistribution);
@@ -692,9 +694,46 @@ const DDRDashboard = () => {
         {/* Start Time Distribution (Column H) */}
         <div className="bg-white p-4 rounded-lg shadow border border-gray-200 mb-6">
           <h3 className="font-medium text-gray-700 mb-3">Start Time Distribution (Column H)</h3>
-          <div style={{ height: "300px" }} className="relative">
-            <canvas id="startTimeChart"></canvas>
-            {!startTimeDistribution && (
+          <div style={{ height: "400px" }} className="relative overflow-auto">
+            {startTimeDistribution ? (
+              <table className="min-w-full bg-white text-sm">
+                <thead className="sticky top-0 bg-white">
+                  <tr>
+                    <th className="py-2 px-4 border-b text-left">Time Block</th>
+                    <th className="py-2 px-4 border-b text-left">Occurrences</th>
+                    <th className="py-2 px-4 border-b text-left">Visual</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {startTimeDistribution.labels.map((timeBlock, index) => {
+                    const count = startTimeDistribution.data[index];
+                    // Only show time blocks with data
+                    if (count > 0) {
+                      // Calculate width percentage for the visual bar (max 100%)
+                      const maxCount = Math.max(...startTimeDistribution.data);
+                      const widthPercentage = (count / maxCount) * 100;
+                      
+                      return (
+                        <tr key={timeBlock}>
+                          <td className="py-2 px-4 border-b">{timeBlock}</td>
+                          <td className="py-2 px-4 border-b">{count}</td>
+                          <td className="py-2 px-4 border-b">
+                            <div className="flex items-center">
+                              <div
+                                className="bg-blue-500 h-4 rounded"
+                                style={{ width: `${widthPercentage}%` }}
+                              ></div>
+                              <span className="ml-2 text-gray-600">{Math.round(widthPercentage)}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return null;
+                  }).filter(Boolean)}
+                </tbody>
+              </table>
+            ) : (
               <div className="absolute inset-0 flex items-center justify-center">
                 <p className="text-gray-500">Select criteria to view time distribution</p>
               </div>
@@ -705,9 +744,46 @@ const DDRDashboard = () => {
         {/* End Time Distribution (Column J) */}
         <div className="bg-white p-4 rounded-lg shadow border border-gray-200 mb-6">
           <h3 className="font-medium text-gray-700 mb-3">End Time Distribution (Column J)</h3>
-          <div style={{ height: "300px" }} className="relative">
-            <canvas id="endTimeChart"></canvas>
-            {!endTimeDistribution && (
+          <div style={{ height: "400px" }} className="relative overflow-auto">
+            {endTimeDistribution ? (
+              <table className="min-w-full bg-white text-sm">
+                <thead className="sticky top-0 bg-white">
+                  <tr>
+                    <th className="py-2 px-4 border-b text-left">Time Block</th>
+                    <th className="py-2 px-4 border-b text-left">Occurrences</th>
+                    <th className="py-2 px-4 border-b text-left">Visual</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {endTimeDistribution.labels.map((timeBlock, index) => {
+                    const count = endTimeDistribution.data[index];
+                    // Only show time blocks with data
+                    if (count > 0) {
+                      // Calculate width percentage for the visual bar (max 100%)
+                      const maxCount = Math.max(...endTimeDistribution.data);
+                      const widthPercentage = (count / maxCount) * 100;
+                      
+                      return (
+                        <tr key={timeBlock}>
+                          <td className="py-2 px-4 border-b">{timeBlock}</td>
+                          <td className="py-2 px-4 border-b">{count}</td>
+                          <td className="py-2 px-4 border-b">
+                            <div className="flex items-center">
+                              <div
+                                className="bg-red-500 h-4 rounded"
+                                style={{ width: `${widthPercentage}%` }}
+                              ></div>
+                              <span className="ml-2 text-gray-600">{Math.round(widthPercentage)}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return null;
+                  }).filter(Boolean)}
+                </tbody>
+              </table>
+            ) : (
               <div className="absolute inset-0 flex items-center justify-center">
                 <p className="text-gray-500">Select criteria to view time distribution</p>
               </div>
